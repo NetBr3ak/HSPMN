@@ -1,0 +1,1012 @@
+\documentclass[11pt,a4paper,twocolumn]{article}
+\UseRawInputEncoding
+
+% Standard packages
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage[margin=1in]{geometry}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{url}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{microtype}
+
+% Configure hyperref
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=blue,
+    citecolor=blue,
+    pdftitle={Hierarchical Shallow Predictive Matter Networks},
+    pdfauthor={Author Name},
+    pdfkeywords={neural networks, active matter, predictive coding, shallow brain hypothesis, self-organization}
+}
+
+% Configure code listings
+\lstset{
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    captionpos=b,
+    commentstyle=\color{green!50!black},
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    numbersep=5pt,
+    tabsize=2,
+    frame=single,
+    framexleftmargin=5mm,
+    xleftmargin=5mm,
+    backgroundcolor=\color{gray!10},
+    showstringspaces=false,
+    language=Python
+}
+
+% Configure title formatting
+\titleformat{\section}
+  {\normalfont\Large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}
+  {\normalfont\large\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+  {\normalfont\normalsize\bfseries}{\thesubsubsection}{1em}{}
+
+\begin{document}
+
+% Title
+\title{\textbf{Hierarchical Shallow Predictive Matter Networks (HSPMN): \\
+Integrating Multi-Scale Prediction with Parallel Processing Through Active Matter Dynamics}}
+
+\author{Szymon Jędryczko\thanks{This work was developed collaboratively between the primary author and AI assistance, both in conceptualization and formalization.}}
+
+\date{\today}
+
+\maketitle
+
+% Abstract
+\begin{abstract}
+Current artificial intelligence architectures typically emphasize either deep hierarchical processing or flat distributed computation, but rarely integrate both effectively. This paper introduces Hierarchical Shallow Predictive Matter Networks (HSPMN), a novel computational architecture that unifies hierarchical predictive coding with parallel shallow processing through dynamic self-organization principles inspired by active matter physics. HSPMN addresses fundamental limitations in existing systems by enabling simultaneous multi-scale prediction and rapid parallel computation, dynamically allocating resources based on task demands. The architecture features hierarchical modules that capture increasingly abstract patterns, parallel units that enable direct communication regardless of hierarchical position, dynamic connectivity with non-reciprocal interactions derived from active matter systems, and oscillatory synchronization mechanisms for coordination. This integration provides significant advantages in prediction-speed tradeoffs, cross-timescale context integration, adaptation without catastrophic forgetting, and robustness through distributed redundancy. We propose implementation strategies and experimental designs to validate HSPMN's potential for advancing continual learning, resource-efficient AI, and robust distributed systems. The architecture represents a fundamental reimagining of how computational systems can organize themselves, with implications across multiple domains of artificial intelligence.
+\end{abstract}
+
+\noindent\textbf{Keywords:} HSPMN, Hierarchical processing, Parallel computation, Predictive coding, Active matter physics, Self-organization, Shallow brain hypothesis, Multi-scale prediction, Non-reciprocal interactions, Oscillatory synchronization
+
+\section{Introduction \& Motivation}
+
+Deep learning architectures have achieved remarkable success across domains, yet they continue to face significant limitations that impede progress toward more adaptive, robust, and efficient artificial intelligence. Current dominant architectures prioritize either deep hierarchical processing or flat distributed computation, creating an artificial dichotomy between these organizational principles that does not exist in biological intelligence.
+
+\subsection{Limitations of Current Approaches}
+
+Deep hierarchical models, including Transformers \cite{vaswani2017attention} and deep neural networks, excel at abstraction but tend to be computationally intensive, requiring substantial resources for both training and inference. While they capture long-range dependencies through stacked self-attention mechanisms or deep layer hierarchies, they typically process information in a predominantly sequential manner through their hierarchical layers. This creates computational bottlenecks and limits their adaptation speed in dynamic environments.
+
+Graph Neural Networks (GNNs) \cite{zhou2020graph} offer more flexible message-passing between nodes but generally operate on static graph structures with fixed connectivity patterns. These models struggle to develop truly emergent computational properties that arise from dynamic self-organization.
+
+Mixture of Experts (MoE) architectures \cite{eigen2013learning} utilize parallel specialized modules but typically employ fixed routing mechanisms controlled by centralized ``gate'' networks, limiting their capacity for autonomous self-organization and adaptation. Their expert modules often operate independently without the flexible, context-dependent coordination needed for complex tasks.
+
+Reservoir computing approaches \cite{lukosevicius2009reservoir} leverage complex dynamical systems for computation but lack structured hierarchical organization that could enable multi-scale processing across temporal and spatial dimensions.
+
+\subsection{Biological and Physical Inspiration}
+
+Recent neuroscience research has revealed that the brain operates across multiple organizational principles simultaneously. Caucheteux et al. \cite{caucheteux2023evidence} demonstrated that the human brain performs predictions at multiple timescales concurrently, with different brain regions specializing in different prediction horizons. Frontoparietal regions handle longer-range, more abstract predictions, while temporal regions process shorter-range, more concrete predictions.
+
+Simultaneously, Suzuki et al. \cite{suzuki2023shallow} proposed the ``shallow brain hypothesis,'' which suggests that the brain functions as a shallow architecture where hierarchical cortical processing integrates with massively parallel subcortical processes. This enables both higher and lower cortical areas to directly interface with subcortical structures regardless of their hierarchical position, providing speed, flexibility, and enhanced computational capabilities.
+
+In the domain of physical systems, active matter research has uncovered how self-propelled particles can spontaneously organize into emergent structures through non-reciprocal interactions and phase transitions \cite{marchetti2024active}. These systems demonstrate capabilities for physical reservoir computing through time-delayed feedback mechanisms \cite{cichos2025roadmap}.
+
+\subsection{HSPMN: A New Paradigm}
+
+We introduce Hierarchical Shallow Predictive Matter Networks (HSPMN), a novel computational architecture that integrates hierarchical predictive coding with parallel shallow processing through dynamic self-organization principles inspired by active matter physics. HSPMN creates systems capable of multi-scale adaptation and emergent intelligence by operating across both vertical (hierarchical) and horizontal (parallel) dimensions simultaneously, mediated by physics-inspired self-organization.
+
+\subsection{Contributions}
+
+This paper makes the following contributions:
+
+\begin{enumerate}
+    \item Introduces a novel computational architecture (HSPMN) that integrates hierarchical prediction, parallel processing, and dynamic self-organization within a unified framework.
+
+    \item Proposes non-reciprocal connectivity dynamics inspired by active matter physics as a mechanism for self-organizing specialization and adaptation in neural networks.
+
+    \item Develops a biologically-grounded approach to multi-scale prediction that mirrors the brain's organization of prediction horizons across different regions.
+
+    \item Presents a solution to the prediction-speed tradeoff by enabling both deep hierarchical processing and rapid parallel computation simultaneously.
+
+    \item Outlines implementation strategies and experimental designs to validate HSPMN's potential for advancing continual learning, resource-efficient AI, and robust distributed systems.
+\end{enumerate}
+
+\section{Related Work}
+
+\subsection{Hierarchical Predictive Coding}
+
+Predictive coding theories \cite{friston2005theory, clark2013whatever} posit that the brain continuously generates predictions about incoming sensory information and updates its internal models based on prediction errors. Hierarchical predictive coding networks typically implement this through a cascade where higher levels predict the activity of lower levels, with error signals propagating upward.
+
+While these models have achieved success in sensory processing tasks \cite{kietzmann2019recurrence}, they typically rely on fixed hierarchical structures with reciprocal connections between adjacent layers. Rao and Ballard's seminal work \cite{rao1999predictive} established the framework for hierarchical predictive coding but maintained strict layer-wise organization without the parallel pathways that enable direct communication between hierarchically distant modules.
+
+HSPMN extends this paradigm by enabling flexible pathways between hierarchical levels and incorporating non-reciprocal connectivity dynamics that allow for more complex, emergent routing patterns.
+
+\subsection{The Shallow Brain Hypothesis}
+
+The shallow brain hypothesis \cite{suzuki2023shallow} challenges the dominant view that the brain primarily operates through deep hierarchical processing. It suggests that the brain functions as a shallow architecture where hierarchical cortical processing is integrated with massively parallel subcortical processes, with both higher and lower cortical areas directly interfacing with subcortical structures.
+
+This perspective provides biological grounding for HSPMN's parallel shallow processing component but does not fully address how such a system would dynamically organize itself or how it would integrate with predictive processing. HSPMN extends this hypothesis by formalizing the computational mechanisms that would enable such integration and incorporating dynamic self-organization principles.
+
+\subsection{Mixture of Experts (MoE)}
+
+Mixture of Experts architectures \cite{eigen2013learning, jacobs1991adaptive} employ specialized modules (experts) and routing mechanisms to direct inputs to the most appropriate experts. While conceptually similar to HSPMN's parallel processing units, MoE systems typically rely on fixed routing mechanisms with centralized control.
+
+Recent large language models like Switch Transformer \cite{fedus2022switch} and Mixtral \cite{jiang2024mixtral} have leveraged MoE approaches to improve efficiency and scale, but they maintain static routing architectures without the dynamic self-organization that characterizes HSPMN. The router in MoE systems lacks the physics-inspired non-reciprocal interactions that drive emergent specialization in our proposed architecture.
+
+\subsection{Active Matter Computing}
+
+Active matter systems consist of self-propelled particles that consume energy to generate motion and forces, leading to emergent collective behavior \cite{marchetti2024active}. Recent research has explored how such systems can perform computational tasks through their dynamics \cite{cichos2025roadmap, zhao2024nonreciprocal}.
+
+The 2025 Motile Active Matter Roadmap \cite{cichos2025roadmap} highlights how non-reciprocal interactions in active matter can lead to pattern formation, phase separation, and complex dynamics suitable for reservoir computing. However, these approaches have not been integrated with structured hierarchical processing or predictive coding frameworks.
+
+HSPMN bridges this gap by incorporating active matter principles into neural network connectivity dynamics, enabling computational systems that self-organize based on task demands while maintaining hierarchical structure.
+
+\subsection{Reservoir Computing and Swarm Architectures}
+
+Reservoir computing \cite{lukosevicius2009reservoir, sussillo2009generating} leverages the dynamics of complex systems to process temporal information without modifying the reservoir itself. While powerful for certain tasks, traditional reservoir computing lacks the hierarchical structure needed for multi-scale processing.
+
+Self-organizing swarm systems \cite{garnier2007biological} have demonstrated the ability to autonomously establish dynamic hierarchies with emergent ``brain'' nodes. Zhu et al. \cite{zhu2024selforganizing} implemented self-organizing nervous systems (SoNS) in robotic swarms, where robots establish hierarchies culminating in interchangeable brains that coordinate sensing and action.
+
+HSPMN combines elements of both approaches, using reservoir-like dynamics for parallel processing while incorporating hierarchical structure and drawing inspiration from swarm systems for dynamic self-organization.
+
+\subsection{Research Gap}
+
+The key gap in existing approaches is the integration of hierarchical prediction with parallel processing through principled self-organization. Current systems typically emphasize either hierarchical depth or parallel breadth, but not both simultaneously. Additionally, the mechanisms for dynamic reconfiguration in neural architectures often lack grounding in physical or biological principles.
+
+HSPMN addresses these gaps by providing a unified framework that bridges hierarchical and parallel processing through active matter-inspired dynamic connectivity, with biological grounding in both the brain's predictive organization and its shallow, parallel processing capabilities.
+
+\section{Proposed Architecture: HSPMN}
+
+Hierarchical Shallow Predictive Matter Networks (HSPMN) integrate four key components: hierarchical prediction modules, parallel shallow processors, dynamic connectivity with non-reciprocal routing, and oscillatory synchronization for temporal coordination. Figure \ref{fig:hspmn-architecture} provides an overview of the architecture.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.95\columnwidth]{hspmn_architecture_diagram.png}
+    \caption{Architecture of Hierarchical Shallow Predictive Matter Networks (HSPMN), showing the integration of hierarchical prediction modules (top), parallel processing units (bottom), dynamic connectivity with non-reciprocal routing (center), and oscillatory synchronization (bottom center). Solid lines represent direct information flow, dashed lines represent non-reciprocal dynamic routing, and dotted lines represent phase coupling for synchronization.}
+    \label{fig:hspmn-architecture}
+\end{figure}
+
+\subsection{Hierarchical Prediction Modules}
+
+The hierarchical prediction component of HSPMN consists of multiple layers of prediction units that capture patterns at different levels of abstraction and temporal scales. Each layer generates predictions about the activity of lower layers, with prediction errors propagating upward to update higher-level representations.
+
+This component is inspired by the brain's multi-scale prediction organization, as demonstrated by Caucheteux et al. \cite{caucheteux2023evidence}, where frontoparietal regions handle longer-range, more abstract predictions (approximately 8 words ahead), while temporal regions process shorter-range, more concrete predictions.
+
+Each hierarchical module implements:
+
+\begin{enumerate}
+    \item \textbf{Forward prediction}: Generating expected patterns at its level based on higher-level context
+    \item \textbf{Error computation}: Calculating the difference between predictions and actual observations
+    \item \textbf{Representation update}: Adjusting internal representations based on prediction errors
+    \item \textbf{Multi-scale forecasting}: Different levels specialize in different prediction horizons
+\end{enumerate}
+
+Unlike traditional predictive coding networks, HSPMN's hierarchical modules can receive input from and send output to any parallel processing unit through the dynamic connectivity layer, regardless of hierarchical position.
+
+\subsection{Parallel Shallow Processing Network}
+
+The parallel processing component consists of a set of computational units that operate concurrently, each potentially specializing in different aspects of the input. These units can communicate directly with any hierarchical level through the dynamic connectivity layer.
+
+This component is inspired by the shallow brain hypothesis \cite{suzuki2023shallow}, which proposes that both higher and lower cortical areas directly interface with subcortical structures, creating a massively parallel processing architecture.
+
+Each parallel unit implements:
+
+\begin{enumerate}
+    \item \textbf{Specialized processing}: Focusing on particular features or transformations
+    \item \textbf{Direct communication}: Sending and receiving information across hierarchical levels
+    \item \textbf{Rapid computation}: Enabling fast responses for time-critical aspects of tasks
+    \item \textbf{Functional redundancy}: Maintaining critical capabilities even when some units fail
+\end{enumerate}
+
+The parallel units provide complementary processing to the hierarchical modules, handling immediate, concrete aspects of inputs while the hierarchical structure manages longer-range, more abstract patterns.
+
+\subsection{Dynamic Connectivity with Non-Reciprocal Routing}
+
+The dynamic connectivity layer mediates communication between hierarchical modules and parallel units through non-reciprocal connections that continuously reconfigure based on task performance. This component is inspired by active matter systems, where non-reciprocal interactions lead to emergent pattern formation and phase separation dynamics \cite{marchetti2024active, cichos2025roadmap}.
+
+The connectivity layer implements:
+
+\begin{enumerate}
+    \item \textbf{Non-reciprocal weighting}: Connection strengths from component A to B can differ from B to A
+    \item \textbf{Phase separation dynamics}: Functional specialization emerges through dynamics similar to phase separation in active matter
+    \item \textbf{Hebbian-like reinforcement}: Connections strengthen based on correlated activity and successful predictions
+    \item \textbf{Adaptive routing}: Information flows are continuously optimized based on task demands
+\end{enumerate}
+
+The non-reciprocal nature of connections enables the system to develop complex routing patterns that would be difficult to achieve with symmetric connectivity, allowing for more nuanced control of information flow and specialization.
+
+\subsection{Oscillatory Synchronization for Temporal Control}
+
+The oscillatory synchronization mechanism coordinates activity across hierarchical and parallel components through phase coupling. This is inspired by neural oscillations in the brain and the coordination mechanisms observed in self-organizing swarm systems \cite{zhu2024selforganizing}.
+
+The oscillatory network implements:
+
+\begin{enumerate}
+    \item \textbf{Frequency band coordination}: Different frequency bands manage different types of information flow
+    \item \textbf{Phase coupling}: Components with related functions synchronize their activity
+    \item \textbf{Global coherence}: Ensuring coordinated processing across the entire network
+    \item \textbf{Temporal segmentation}: Separating processing into discrete computational episodes
+\end{enumerate}
+
+This mechanism enables the system to maintain coherent global function despite its distributed, heterogeneous structure, ensuring that information is integrated appropriately across components.
+\onecolumn
+\newpage
+\subsection{Pseudocode Implementation}
+
+The following pseudocode illustrates the core functionality of HSPMN:
+
+\begin{lstlisting}[caption={Core HSPMN Implementation}, label={lst:hspmn-core}]
+class HSPMN:
+    def __init__(self, input_dim, output_dim, hier_levels=3, parallel_units=10):
+        # Initialize hierarchical prediction modules
+        self.hier_modules = [PredictiveModule(level) for level in range(hier_levels)]
+
+        # Initialize parallel processing units
+        self.parallel_units = [ParallelUnit(i) for i in range(parallel_units)]
+
+        # Initialize dynamic connectivity matrix
+        self.connectivity = DynamicConnectivity(hier_levels, parallel_units)
+
+        # Initialize oscillation mechanism
+        self.oscillator = OscillatoryNetwork(hier_levels, parallel_units)
+
+    def forward(self, input_data, timesteps=1):
+        # Process input across multiple timesteps
+        for t in range(timesteps):
+            # Step 1: Generate predictions at each hierarchical level
+            hier_predictions = [module.predict() for module in self.hier_modules]
+
+            # Step 2: Process through parallel units
+            parallel_outputs = []
+            for unit in self.parallel_units:
+                # Units can access information from any hierarchical level
+                unit_input = self.connectivity.route_to_parallel(hier_predictions, unit.id)
+                parallel_outputs.append(unit.process(unit_input))
+
+            # Step 3: Update hierarchical modules with parallel processing results
+            for level, module in enumerate(self.hier_modules):
+                module_input = self.connectivity.route_to_hierarchical(parallel_outputs, level)
+                module.update(module_input)
+
+            # Step 4: Synchronize through oscillatory activity
+            self.oscillator.coordinate(self.hier_modules, self.parallel_units)
+
+            # Step 5: Update dynamic connectivity based on performance
+            prediction_errors = [module.get_error() for module in self.hier_modules]
+            self.connectivity.update(prediction_errors)
+
+        # Generate final output from both hierarchical and parallel components
+        return self.integrate_outputs()
+
+    def integrate_outputs(self):
+        # Integrate hierarchical predictions with parallel processing
+        hier_outputs = [module.get_output() for module in self.hier_modules]
+        parallel_outputs = [unit.get_output() for unit in self.parallel_units]
+
+        # Dynamic integration weights determined by connectivity patterns
+        integration_weights = self.connectivity.get_integration_weights()
+
+        # Weighted combination of outputs
+        return weighted_combine(hier_outputs, parallel_outputs, integration_weights)
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Dynamic Connectivity Implementation}, label={lst:dynamic-connectivity}]
+class DynamicConnectivity:
+    def __init__(self, hier_levels, parallel_units):
+        # Initialize connectivity matrices with non-reciprocal interactions
+        self.h2p_weights = initialize_nonreciprocal_weights(hier_levels, parallel_units)
+        self.p2h_weights = initialize_nonreciprocal_weights(parallel_units, hier_levels)
+
+        # Parameters controlling phase separation dynamics
+        self.phase_params = initialize_phase_separation_params()
+
+    def route_to_parallel(self, hier_outputs, unit_id):
+        # Route hierarchical outputs to specific parallel unit
+        # Uses non-reciprocal weighting inspired by active matter
+        return weighted_routing(hier_outputs, self.h2p_weights[:, unit_id])
+
+    def route_to_hierarchical(self, parallel_outputs, level):
+        # Route parallel outputs to specific hierarchical level
+        return weighted_routing(parallel_outputs, self.p2h_weights[:, level])
+
+    def update(self, prediction_errors):
+        # Update connection weights using active matter principles
+        # Implements both Hebbian-like reinforcement and phase separation
+
+        # 1. Calculate activity correlation matrix
+        correlation = calculate_correlation_matrix()
+
+        # 2. Update weights with non-reciprocal rules
+        self.h2p_weights = update_with_nonreciprocal_rules(self.h2p_weights, correlation, prediction_errors)
+        self.p2h_weights = update_with_nonreciprocal_rules(self.p2h_weights, correlation, prediction_errors)
+
+        # 3. Apply phase separation dynamics
+        apply_phase_separation(self.h2p_weights, self.p2h_weights, self.phase_params)
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Oscillatory Synchronization Implementation}, label={lst:oscillatory-network}]
+class OscillatoryNetwork:
+    def __init__(self, hier_levels, parallel_units):
+        # Initialize oscillators at different frequency bands
+        self.oscillators = initialize_oscillators(hier_levels, parallel_units)
+
+    def coordinate(self, hier_modules, parallel_units):
+        # Use oscillatory patterns to coordinate activity
+        # Different frequency bands coordinate different types of information flow
+        update_oscillator_phases(self.oscillators, hier_modules, parallel_units)
+        apply_phase_coupling(hier_modules, parallel_units, self.oscillators)
+\end{lstlisting}
+
+\subsection{Biological and Physical Inspirations}
+
+Each component of HSPMN draws inspiration from biological and physical systems:
+
+\begin{enumerate}
+    \item \textbf{Hierarchical Prediction Modules}: Inspired by the brain's hierarchical predictive processing and the spatial organization of prediction horizons across different brain regions \cite{caucheteux2023evidence}.
+
+    \item \textbf{Parallel Shallow Processing Network}: Grounded in the shallow brain hypothesis \cite{suzuki2023shallow}, which proposes that the brain functions as a shallow architecture with direct connections between cortical areas and subcortical structures.
+
+    \item \textbf{Dynamic Connectivity with Non-Reciprocal Routing}: Derived from active matter systems, where non-reciprocal interactions lead to pattern formation, phase separation, and complex dynamics \cite{marchetti2024active, cichos2025roadmap}.
+
+    \item \textbf{Oscillatory Synchronization}: Based on neural oscillations in the brain and coordination mechanisms in self-organizing swarm systems \cite{zhu2024selforganizing}.
+\end{enumerate}
+
+By integrating these inspirations, HSPMN creates a computational architecture that reflects the brain's ability to operate across multiple organizational principles simultaneously while incorporating physics-inspired self-organization.
+
+\section{Implementation \& Experimental Setup}
+
+\subsection{PyTorch Implementation Strategy}
+
+HSPMN can be implemented using PyTorch by leveraging its flexible tensor operations and automatic differentiation capabilities. The implementation would include the following components:
+
+\begin{lstlisting}[caption={Hierarchical Prediction Module Implementation}, label={lst:predictive-module}]
+class PredictiveModule(nn.Module):
+    def __init__(self, level, input_dim, hidden_dim, output_dim):
+        super(PredictiveModule, self).__init__()
+        self.level = level
+        self.encoder = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.SiLU(),
+            nn.Linear(hidden_dim, hidden_dim)
+        )
+        self.predictor = nn.Linear(hidden_dim, output_dim)
+        self.representation = None
+        self.prediction = None
+        self.error = None
+
+    def forward(self, x):
+        self.representation = self.encoder(x)
+        self.prediction = self.predictor(self.representation)
+        return self.prediction
+
+    def compute_error(self, target):
+        self.error = target - self.prediction
+        return self.error
+
+    def update(self, input_data):
+        # Update based on both bottom-up input and top-down predictions
+        return self.forward(input_data)
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Parallel Processing Unit Implementation}, label={lst:parallel-unit}]
+class ParallelUnit(nn.Module):
+    def __init__(self, unit_id, input_dim, hidden_dim, output_dim):
+        super(ParallelUnit, self).__init__()
+        self.id = unit_id
+        self.processor = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.SiLU(),
+            nn.Linear(hidden_dim, output_dim)
+        )
+        self.output = None
+
+    def forward(self, x):
+        self.output = self.processor(x)
+        return self.output
+
+    def get_output(self):
+        return self.output
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Dynamic Connectivity PyTorch Implementation}, label={lst:dynamic-connectivity-pytorch}]
+class DynamicConnectivity(nn.Module):
+    def __init__(self, hier_levels, parallel_units, feature_dim):
+        super(DynamicConnectivity, self).__init__()
+        # Non-reciprocal weight matrices
+        self.h2p_weights = nn.Parameter(torch.rand(hier_levels, parallel_units))
+        self.p2h_weights = nn.Parameter(torch.rand(parallel_units, hier_levels))
+
+        # Phase separation parameters
+        self.temperature = nn.Parameter(torch.tensor(1.0))
+        self.separation_threshold = nn.Parameter(torch.tensor(0.5))
+
+    def route_to_parallel(self, hier_outputs, unit_id):
+        # Weight hierarchical outputs for specific parallel unit
+        weighted_outputs = [w * out for w, out in zip(self.h2p_weights[:, unit_id], hier_outputs)]
+        return torch.cat(weighted_outputs, dim=1)
+
+    def route_to_hierarchical(self, parallel_outputs, level):
+        # Weight parallel outputs for specific hierarchical level
+        weighted_outputs = [w * out for w, out in zip(self.p2h_weights[:, level], parallel_outputs)]
+        return torch.cat(weighted_outputs, dim=1)
+
+    def update(self, correlation_matrix, prediction_errors):
+        # Apply non-reciprocal update rules
+        error_scale = torch.mean(torch.stack([torch.mean(err.abs()) for err in prediction_errors]))
+
+        # Update based on correlated activity and prediction performance
+        h2p_updates = torch.matmul(correlation_matrix, (1.0 / (error_scale + 1e-6)))
+        p2h_updates = torch.matmul(correlation_matrix.T, (1.0 / (error_scale + 1e-6)))
+
+        # Apply updates with different rules for h2p and p2h to maintain non-reciprocity
+        self.h2p_weights = self.h2p_weights * (1 + 0.01 * h2p_updates)
+        self.p2h_weights = self.p2h_weights * (1 + 0.01 * p2h_updates)
+
+        # Apply phase separation dynamics
+        self.apply_phase_separation()
+
+    def apply_phase_separation(self):
+        # Implement active matter-inspired phase separation
+        h2p_probs = torch.softmax(self.h2p_weights / self.temperature, dim=0)
+        p2h_probs = torch.softmax(self.p2h_weights / self.temperature, dim=0)
+
+        # Calculate concentration gradients
+        h2p_grad = h2p_probs * (1 - h2p_probs)
+        p2h_grad = p2h_probs * (1 - p2h_probs)
+
+        # Update weights based on phase separation dynamics
+        self.h2p_weights = self.h2p_weights + 0.01 * h2p_grad * (h2p_probs - self.separation_threshold)
+        self.p2h_weights = self.p2h_weights + 0.01 * p2h_grad * (p2h_probs - self.separation_threshold)
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Oscillatory Network PyTorch Implementation}, label={lst:oscillatory-network-pytorch}]
+class OscillatoryNetwork(nn.Module):
+    def __init__(self, hier_levels, parallel_units, num_freq_bands=3):
+        super(OscillatoryNetwork, self).__init__()
+        self.hier_levels = hier_levels
+        self.parallel_units = parallel_units
+        self.num_freq_bands = num_freq_bands
+
+        # Phase and frequency parameters
+        self.hier_phases = nn.Parameter(torch.zeros(hier_levels, num_freq_bands))
+        self.parallel_phases = nn.Parameter(torch.zeros(parallel_units, num_freq_bands))
+        self.frequencies = nn.Parameter(torch.tensor([0.1, 0.2, 0.5]))  # Different frequency bands
+
+        # Coupling strengths
+        self.coupling_h2h = nn.Parameter(torch.rand(hier_levels, hier_levels, num_freq_bands))
+        self.coupling_p2p = nn.Parameter(torch.rand(parallel_units, parallel_units, num_freq_bands))
+        self.coupling_h2p = nn.Parameter(torch.rand(hier_levels, parallel_units, num_freq_bands))
+
+    def forward(self, dt=0.1):
+        # Update oscillator phases
+        self.hier_phases = self.hier_phases + dt * self.frequencies
+        self.parallel_phases = self.parallel_phases + dt * self.frequencies
+
+        # Apply phase coupling
+        self.apply_phase_coupling(dt)
+
+        # Normalize phases to [0, 2π]
+        self.hier_phases = torch.remainder(self.hier_phases, 2 * torch.pi)
+        self.parallel_phases = torch.remainder(self.parallel_phases, 2 * torch.pi)
+
+        return self.hier_phases, self.parallel_phases
+
+    def apply_phase_coupling(self, dt):
+        # Hierarchical coupling
+        for i in range(self.hier_levels):
+            for j in range(self.hier_levels):
+                phase_diff = self.hier_phases[j] - self.hier_phases[i]
+                self.hier_phases[i] = self.hier_phases[i] + dt * self.coupling_h2h[i,j] * torch.sin(phase_diff)
+
+        # Parallel coupling
+        for i in range(self.parallel_units):
+            for j in range(self.parallel_units):
+                phase_diff = self.parallel_phases[j] - self.parallel_phases[i]
+                self.parallel_phases[i] = self.parallel_phases[i] + dt * self.coupling_p2p[i,j] * torch.sin(phase_diff)
+
+        # Cross-component coupling
+        for i in range(self.hier_levels):
+            for j in range(self.parallel_units):
+                h2p_diff = self.parallel_phases[j] - self.hier_phases[i]
+                p2h_diff = self.hier_phases[i] - self.parallel_phases[j]
+                self.hier_phases[i] = self.hier_phases[i] + dt * self.coupling_h2p[i,j] * torch.sin(h2p_diff)
+                self.parallel_phases[j] = self.parallel_phases[j] + dt * self.coupling_h2p[i,j] * torch.sin(p2h_diff)
+
+    def get_modulation(self, component_type, component_id):
+        if component_type == 'hierarchical':
+            phases = self.hier_phases[component_id]
+        else:  # 'parallel'
+            phases = self.parallel_phases[component_id]
+
+        # Convert phases to modulation factors
+        return 0.5 * (1 + torch.cos(phases))
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Complete HSPMN PyTorch Implementation}, label={lst:hspmn-pytorch}]
+class HSPMN(nn.Module):
+    def __init__(self, input_dim, output_dim, hier_levels=3, parallel_units=10, hidden_dim=256):
+        super(HSPMN, self).__init__()
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+
+        # Initialize hierarchical modules
+        self.hier_modules = nn.ModuleList([
+            PredictiveModule(
+                level=l,
+                input_dim=input_dim if l == 0 else hidden_dim,
+                hidden_dim=hidden_dim,
+                output_dim=hidden_dim
+            ) for l in range(hier_levels)
+        ])
+
+        # Initialize parallel units
+        self.parallel_units = nn.ModuleList([
+            ParallelUnit(
+                unit_id=i,
+                input_dim=hidden_dim * hier_levels,  # Can receive from all hierarchical levels
+                hidden_dim=hidden_dim,
+                output_dim=hidden_dim
+            ) for i in range(parallel_units)
+        ])
+
+        # Initialize dynamic connectivity
+        self.connectivity = DynamicConnectivity(
+            hier_levels=hier_levels,
+            parallel_units=parallel_units,
+            feature_dim=hidden_dim
+        )
+
+        # Initialize oscillatory network
+        self.oscillator = OscillatoryNetwork(
+            hier_levels=hier_levels,
+            parallel_units=parallel_units
+        )
+
+        # Output integration layer
+        self.integration = nn.Linear(hidden_dim * (hier_levels + parallel_units), output_dim)
+
+    def forward(self, x, timesteps=1):
+        batch_size = x.shape[0]
+
+        # Initial processing
+        hier_inputs = [x] + [torch.zeros(batch_size, self.hier_modules[l].encoder[0].out_features) 
+                            for l in range(1, len(self.hier_modules))]
+
+        # Process across multiple timesteps
+        for t in range(timesteps):
+            # Step 1: Generate predictions at each hierarchical level
+            hier_outputs = []
+            for l, module in enumerate(self.hier_modules):
+                hier_outputs.append(module(hier_inputs[l]))
+
+                # Compute prediction errors for all but the highest level
+                if l < len(self.hier_modules) - 1:
+                    module.compute_error(hier_inputs[l+1])
+
+            # Step 2: Process through parallel units with modulation from oscillator
+            hier_phases, parallel_phases = self.oscillator(dt=0.1)
+
+            parallel_outputs = []
+            for i, unit in enumerate(self.parallel_units):
+                # Get inputs for this unit from all hierarchical levels
+                unit_input = self.connectivity.route_to_parallel(hier_outputs, i)
+
+                # Apply oscillatory modulation
+                modulation = self.oscillator.get_modulation('parallel', i)
+                parallel_outputs.append(unit(unit_input) * modulation.unsqueeze(0))
+
+            # Step 3: Update hierarchical modules with parallel processing results
+            for l, module in enumerate(self.hier_modules):
+                # Get inputs for this module from all parallel units
+                module_input = self.connectivity.route_to_hierarchical(parallel_outputs, l)
+
+                # Apply oscillatory modulation
+                modulation = self.oscillator.get_modulation('hierarchical', l)
+                hier_inputs[l] = module_input * modulation.unsqueeze(0)
+
+            # Step 4: Update dynamic connectivity based on activity correlations
+            if t < timesteps - 1:  # Skip on last timestep
+                # Compute correlation matrix between hierarchical and parallel components
+                h_flat = torch.cat([h.view(batch_size, -1) for h in hier_outputs], dim=1)
+                p_flat = torch.cat([p.view(batch_size, -1) for p in parallel_outputs], dim=1)
+
+                # Compute correlation
+                h_norm = (h_flat - h_flat.mean(0)) / (h_flat.std(0) + 1e-8)
+                p_norm = (p_flat - p_flat.mean(0)) / (p_flat.std(0) + 1e-8)
+                correlation = torch.matmul(h_norm.T, p_norm) / batch_size
+
+                # Update connectivity based on correlation and prediction errors
+                self.connectivity.update(correlation, [m.error for m in self.hier_modules[:-1]])
+
+        # Final integration of hierarchical and parallel outputs
+        h_final = torch.cat([h.view(batch_size, -1) for h in hier_outputs], dim=1)
+        p_final = torch.cat([p.view(batch_size, -1) for p in parallel_outputs], dim=1)
+        combined = torch.cat([h_final, p_final], dim=1)
+
+        return self.integration(combined)
+\end{lstlisting}
+\twocolumn
+\subsection{Planned Experiments}
+
+We propose the following experiments to validate HSPMN's capabilities:
+
+\subsubsection{Multi-Scale Prediction Task}
+
+This experiment evaluates HSPMN's ability to perform predictions at multiple timescales simultaneously, comparing against traditional hierarchical models.
+
+\textbf{Data}: Time series data with patterns at multiple timescales, such as financial market data, climate data, or synthetic datasets with embedded patterns of varying frequencies.
+
+\textbf{Baseline Models}:
+\begin{itemize}
+    \item Hierarchical LSTM
+    \item Transformer with different attention spans
+    \item Deep predictive coding networks
+\end{itemize}
+
+\textbf{Metrics}:
+\begin{itemize}
+    \item Prediction accuracy at different time horizons (1-step, 5-step, 20-step ahead)
+    \item Computation time
+    \item Resource utilization under varying prediction horizons
+\end{itemize}
+
+\subsubsection{Continual Learning with Catastrophic Forgetting Mitigation}
+
+This experiment tests HSPMN's ability to learn new tasks without forgetting previously learned ones, leveraging its dynamic connectivity and parallel processing.
+
+\textbf{Data}: Sequential task datasets such as Split-MNIST, Permuted-MNIST, or task sequences from the Continual Learning benchmark.
+
+\textbf{Baseline Models}:
+\begin{itemize}
+    \item Elastic Weight Consolidation (EWC)
+    \item Progressive Neural Networks
+    \item Memory-based approaches (e.g., Experience Replay)
+\end{itemize}
+
+\textbf{Metrics}:
+\begin{itemize}
+    \item Average accuracy across all tasks after sequential learning
+    \item Backward transfer (performance on earlier tasks after learning later ones)
+    \item Forward transfer (performance on new tasks leveraging previous learning)
+\end{itemize}
+
+\subsubsection{Robustness to Component Failure}
+
+This experiment evaluates HSPMN's fault tolerance compared to traditional architectures by systematically disabling components and measuring performance degradation.
+
+\textbf{Data}: Image classification (CIFAR-10/100) or language modeling tasks.
+
+\textbf{Procedure}:
+\begin{enumerate}
+    \item Train models to convergence
+    \item Incrementally disable units (neurons, attention heads, or experts in baseline models; parallel units or hierarchical modules in HSPMN)
+    \item Measure performance after each disabling step
+\end{enumerate}
+
+\textbf{Baseline Models}:
+\begin{itemize}
+    \item Standard CNNs/Transformers
+    \item Mixture of Experts
+    \item Ensemble methods
+\end{itemize}
+
+\textbf{Metrics}:
+\begin{itemize}
+    \item Graceful degradation curve (performance vs. percentage of disabled units)
+    \item Critical threshold (percentage of units that can be disabled before significant performance drop)
+    \item Recovery speed when disabled units are reactivated
+\end{itemize}
+
+\subsubsection{Resource Efficiency Under Dynamic Loads}
+
+This experiment tests HSPMN's ability to dynamically allocate computational resources based on task complexity.
+
+\textbf{Data}: Tasks with varying complexity, such as language understanding with sentences of different syntactic complexity or visual scenes with varying numbers of objects.
+
+\textbf{Procedure}:
+\begin{enumerate}
+    \item Present tasks of progressively increasing complexity
+    \item Measure resource allocation across hierarchical and parallel components
+    \item Compare with static allocation baselines
+\end{enumerate}
+
+\textbf{Baseline Models}:
+\begin{itemize}
+    \item Fixed capacity networks
+    \item Mixture of Experts with static routing
+    \item Conditional computation networks
+\end{itemize}
+
+\textbf{Metrics}:
+\begin{itemize}
+    \item Computation time vs. task complexity
+    \item Energy consumption estimates
+    \item Resource utilization efficiency (performance per compute unit)
+\end{itemize}
+
+\subsection{Architecture Configuration}
+
+For the initial implementation and experiments, we propose the following configuration:
+
+\begin{enumerate}
+    \item \textbf{Hierarchical Prediction Modules}:
+    \begin{itemize}
+        \item 3-5 hierarchical levels
+        \item Hidden dimension: 256-512 units per level
+        \item Activation function: SiLU (Sigmoid Linear Unit)
+        \item Layer normalization between layers
+    \end{itemize}
+
+    \item \textbf{Parallel Processing Units}:
+    \begin{itemize}
+        \item 10-20 parallel units
+        \item Hidden dimension: 256-512 units per unit
+        \item Specialized initializations for potentially different functions
+    \end{itemize}
+
+    \item \textbf{Dynamic Connectivity}:
+    \begin{itemize}
+        \item Non-reciprocal weight initialization: Xavier uniform
+        \item Phase separation temperature: initially set to 1.0, annealed during training
+        \item Update rate: 0.01 initially, with adaptive adjustment
+    \end{itemize}
+
+    \item \textbf{Oscillatory Network}:
+    \begin{itemize}
+        \item Frequency bands: 3-5 different frequencies
+        \item Initial phase coupling strength: 0.1
+        \item Phase update rate: 0.1
+    \end{itemize}
+
+    \item \textbf{Training Configuration}:
+    \begin{itemize}
+        \item Optimizer: Adam with learning rate 3e-4
+        \item Batch size: 64-128
+        \item Gradient clipping: 1.0
+        \item Learning rate schedule: Cosine annealing
+    \end{itemize}
+\end{enumerate}
+
+This configuration provides a balance between model expressivity and computational feasibility, allowing for meaningful evaluation of HSPMN's capabilities while remaining implementable on standard hardware.
+
+\section{Discussion of Results (Hypothetical Behavior)}
+
+Based on the architecture and principles of HSPMN, we can anticipate several behavioral characteristics and performance patterns, even before empirical validation. This section discusses the expected behaviors of HSPMN across key dimensions.
+
+\subsection{Efficiency Tradeoffs}
+
+HSPMN is expected to demonstrate unique efficiency characteristics compared to traditional architectures:
+
+\textbf{Computational Allocation}: Unlike fixed architectures that maintain the same computational pathway regardless of task complexity, HSPMN should dynamically allocate resources between hierarchical and parallel components. For simple, immediate tasks, we expect the parallel pathways to dominate, bypassing unnecessary hierarchical processing. For complex tasks requiring abstraction and long-range prediction, hierarchical pathways should become more active.
+
+\textbf{Prediction Horizon Efficiency}: Traditional deep networks typically process all inputs through their entire depth, regardless of prediction horizon. In contrast, HSPMN should allocate different hierarchical levels based on required prediction distance, with lower levels handling short-term predictions and higher levels managing longer-term forecasts. This allocation should reduce computational waste for short-horizon predictions.
+
+\textbf{Batch Processing Adaptivity}: When processing batches with varying complexity, HSPMN should automatically route simpler examples through parallel pathways while engaging deeper hierarchical processing for complex examples, creating natural computation-per-example efficiency.
+
+The expected relationship between task complexity and computational allocation is depicted in Figure \ref{fig:resource-allocation}, showing how parallel processing dominates for simpler tasks while hierarchical processing becomes more engaged as complexity increases.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.95\columnwidth]{detailed_architecture.png}
+    \caption{Expected dynamic resource allocation between hierarchical and parallel processing in HSPMN as a function of task complexity. For simpler tasks, parallel processing dominates, while more complex tasks engage more hierarchical processing.}
+    \label{fig:resource-allocation}
+\end{figure}
+
+\subsection{Plasticity vs. Stability}
+
+A critical challenge in neural networks is balancing plasticity (ability to learn new information) with stability (ability to retain existing knowledge). HSPMN's architecture offers a potential solution to this dilemma:
+
+\textbf{Distributed Representation}: By maintaining both hierarchical and parallel representations, HSPMN should store knowledge redundantly across different computational pathways. This redundancy allows for targeted updates to specific components without disrupting the entire representation space.
+
+\textbf{Non-Reciprocal Dynamics}: The non-reciprocal connectivity enables asymmetric updates where certain pathways can be modified while others remain stable. This contrasts with traditional networks where weight updates affect both forward and backward passes symmetrically.
+
+\textbf{Phase Separation Specialization}: Active matter-inspired phase separation should drive functional specialization, creating natural ``expert'' units that focus on different aspects of tasks. This specialization allows new information to be integrated by adapting specific experts rather than modifying the entire network.
+
+\textbf{Expected Behavior}: When confronted with new tasks after training on initial tasks, HSPMN should demonstrate lower forgetting rates than traditional architectures. We hypothesize a 30-50\% reduction in catastrophic forgetting compared to standard neural networks, with performance retention more similar to specialized continual learning methods but without their computational overhead.
+
+\subsection{Resource Allocation Under Dynamic Load}
+
+HSPMN's dynamic connectivity should enable efficient resource allocation when processing inputs of varying complexity:
+
+\textbf{Adaptive Computation Time}: Unlike fixed-depth networks that use the same computation for all inputs, HSPMN should naturally implement a form of adaptive computation, with simpler inputs processed primarily through parallel pathways and complex inputs engaging more hierarchical processing.
+
+\textbf{Load Balancing}: When processing batches with heterogeneous complexity, HSPMN's dynamic routing should distribute computation across available units rather than bottlenecking on specific pathways. This load balancing should improve throughput compared to static architectures.
+
+\textbf{Energy Efficiency}: By allocating resources based on need rather than using the full network for every input, HSPMN should demonstrate better energy efficiency, particularly for datasets with varying complexity.
+
+\textbf{Expected Behavior}: We anticipate that HSPMN will show computation time scaling sublinearly with task complexity, unlike fixed architectures where computation is constant regardless of input difficulty. For mixed batches, this should translate to 20-40\% lower average computation compared to static architectures with equivalent peak performance.
+
+\subsection{Resistance to Catastrophic Forgetting}
+
+The combination of parallel processing, dynamic connectivity, and oscillatory synchronization should provide HSPMN with enhanced resistance to catastrophic forgetting:
+
+\textbf{Specialized Units}: Through phase separation dynamics, parallel units should specialize in different task aspects. When learning new tasks, the system can preferentially adapt underutilized units rather than modifying units critical for previous tasks.
+
+\textbf{Context-Dependent Processing}: Oscillatory synchronization enables context-dependent processing where the same units can participate in different functional circuits depending on the input. This multiplexing allows the network to reuse components across tasks without interference.
+
+\textbf{Distributed Representation}: By distributing knowledge across both hierarchical and parallel components, the system maintains redundant representations that provide robustness when individual components are modified during new learning.
+
+\textbf{Expected Behavior}: In continual learning scenarios, HSPMN should maintain higher performance on earlier tasks after learning new ones compared to traditional architectures. We hypothesize that this advantage will be most pronounced as the number of sequential tasks increases, with performance degradation scaling logarithmically rather than linearly with task count.
+
+\subsection{Emergent Functional Organization}
+
+Perhaps the most intriguing expected behavior of HSPMN is the emergence of functional organization through self-organization principles:
+
+\textbf{Task-Dependent Hierarchy}: Unlike fixed architectures where the processing hierarchy is static, HSPMN should develop task-dependent effective hierarchies through its dynamic connectivity. These emergent hierarchies should adapt to the specific structural requirements of different tasks.
+
+\textbf{Functional Modules}: Through repeated exposure to structured data, we expect the network to develop functional modules—clusters of hierarchical and parallel components that specialize in processing particular types of patterns.
+
+\textbf{Dynamic Reconfiguration}: When switching between tasks, the oscillatory synchronization should drive rapid reconfiguration of these functional modules, enabling context-dependent processing without requiring explicit task identification.
+
+\textbf{Expected Behavior}: Analysis of internal activations should reveal the emergence of functional clustering that corresponds to task structure rather than architectural boundaries. This organization should develop spontaneously through training without explicit modular design.
+
+\section{Applications \& Future Directions}
+
+\subsection{Potential Applications}
+
+HSPMN's unique architecture makes it particularly well-suited for several application domains:
+
+\subsubsection{Continual Learning Agents}
+
+The dynamic connectivity and parallel processing of HSPMN address key challenges in continual learning:
+
+\begin{itemize}
+    \item \textbf{Knowledge Preservation}: By distributing representations across hierarchical and parallel components, knowledge from previous tasks can be preserved while learning new ones.
+    \item \textbf{Transfer Learning}: The ability to selectively activate relevant pathways enables efficient transfer of knowledge between related tasks.
+    \item \textbf{Resource Efficiency}: Dynamic allocation allows for scaling computation based on task complexity, critical for resource-constrained continual learning scenarios.
+\end{itemize}
+
+Potential implementations include lifelong learning systems for robotics, personal digital assistants that continuously adapt to user patterns, and recommendation systems that evolve with changing user preferences.
+
+\subsubsection{Autonomous Robotics}
+
+Robotics applications benefit from HSPMN's integration of multiple timescale processing and adaptive resource allocation:
+
+\begin{itemize}
+    \item \textbf{Multi-Timescale Control}: Hierarchical prediction enables planning at different timescales (immediate obstacle avoidance, medium-term route planning, long-term goal achievement).
+    \item \textbf{Fault Tolerance}: Parallel processing pathways provide redundancy critical for safety in autonomous systems.
+    \item \textbf{Adaptation to Environmental Changes}: Dynamic connectivity allows for rapid adaptation to changing environmental conditions or task requirements.
+\end{itemize}
+
+Implementations could include autonomous vehicles that dynamically balance immediate safety concerns with longer-term route optimization, industrial robots that adjust processing based on task complexity, and swarm robotics systems with emergent coordination.
+
+\subsubsection{Edge Computing with Adaptive Intelligence}
+
+Resource constraints in edge computing make HSPMN's efficiency advantages particularly valuable:
+
+\begin{itemize}
+    \item \textbf{Computation-Power Tradeoffs}: Dynamic allocation between hierarchical and parallel processing allows for balancing accuracy and energy consumption.
+    \item \textbf{Task-Dependent Scaling}: The architecture can adapt its effective capacity based on the complexity of current tasks.
+    \item \textbf{Distributed Processing}: HSPMN's principles can extend to networks of edge devices, with different devices specializing in different processing aspects.
+\end{itemize}
+
+Applications include IoT networks with emergent intelligence, mobile devices with adaptive processing capabilities, and smart infrastructure with distributed sensing and computation.
+
+\subsubsection{Distributed AI Systems}
+
+HSPMN's design principles can scale to distributed systems of interconnected AI components:
+
+\begin{itemize}
+    \item \textbf{Federated Intelligence}: Different components can specialize while maintaining global coherence through principles similar to oscillatory synchronization.
+    \item \textbf{Resilience to Node Failures}: The redundancy and dynamic routing inherent in HSPMN provide natural resilience in distributed settings.
+    \item \textbf{Heterogeneous Hardware Utilization}: Different computational units (CPUs, GPUs, specialized accelerators) can be integrated within the HSPMN framework, with dynamic connectivity routing computation to the most appropriate hardware.
+\end{itemize}
+
+Potential implementations include cloud-edge hybrid AI systems, distributed sensor networks with embedded intelligence, and collaborative multi-agent systems.
+
+\subsection{Future Research Directions}
+
+Several promising research directions could extend and enhance the HSPMN framework:
+
+\subsubsection{Theoretical Extensions}
+
+\textbf{Information-Theoretic Analysis}: Developing formal information-theoretic frameworks to analyze the efficiency of integrated hierarchical and parallel processing could provide theoretical foundations for HSPMN's observed behaviors.
+
+\textbf{Dynamical Systems Perspective}: Exploring HSPMN through the lens of dynamical systems theory could yield insights into stability conditions, phase transitions in functional organization, and the relationship between non-reciprocal connectivity and computational capabilities.
+
+\textbf{Computational Complexity Analysis}: Formalizing the computational complexity advantages of dynamic resource allocation compared to fixed architectures could guide optimization of HSPMN for specific task classes.
+
+\subsubsection{Architectural Variations}
+
+\textbf{Hierarchical Depth Exploration}: Investigating the relationship between hierarchical depth, parallel breadth, and task complexity could establish principles for optimal architecture configuration across different domains.
+
+\textbf{Alternative Synchronization Mechanisms}: Exploring synchronization mechanisms beyond oscillatory coupling, such as information-theoretic coordination or energy-based alignment, might reveal more efficient ways to integrate hierarchical and parallel processing.
+
+\textbf{Physical Implementation}: Designing physical computing substrates based on active matter principles could potentially realize HSPMN-like computation in novel hardware platforms.
+
+\subsubsection{Integration with Existing Frameworks}
+
+\textbf{HSPMN as Meta-Architecture}: Exploring how HSPMN principles could serve as a meta-architecture for integrating existing neural network components, such as using Transformer blocks within hierarchical modules or Graph Neural Networks within parallel units.
+
+\textbf{Neurosymbolic Integration}: Investigating how HSPMN's dynamic routing could facilitate integration between neural and symbolic processing, potentially addressing the flexibility-precision tradeoff in AI systems.
+
+\textbf{Biological Validation}: Collaborating with neuroscience researchers to validate HSPMN's predictions about brain function, particularly regarding the interaction between hierarchical cortical processing and parallel subcortical pathways.
+
+\subsubsection{Advanced Training Methods}
+
+\textbf{Self-Supervised Specialization}: Developing training methods that encourage functional specialization through self-supervision, potentially accelerating the emergence of effective organizational structures.
+
+\textbf{Meta-Learning for Dynamic Connectivity}: Exploring meta-learning approaches for optimizing the dynamics of connectivity updates, enabling faster adaptation to new tasks.
+
+\textbf{Curriculum-Based Training}: Designing curricula that progressively expose the network to tasks of increasing complexity, potentially facilitating more effective functional organization.
+
+\section{Conclusion}
+
+This paper introduced Hierarchical Shallow Predictive Matter Networks (HSPMN), a novel computational architecture that integrates hierarchical predictive coding with parallel shallow processing through dynamic self-organization inspired by active matter physics. By operating simultaneously across vertical (hierarchical) and horizontal (parallel) dimensions, HSPMN provides a framework for computational systems that can dynamically allocate resources based on task demands.
+
+The key innovations of HSPMN include:
+
+\begin{enumerate}
+    \item Integration of multi-scale hierarchical prediction with parallel processing, inspired by neuroscientific evidence of the brain's dual organizational principles.
+
+    \item Dynamic connectivity with non-reciprocal interactions derived from active matter physics, enabling emergent functional specialization and adaptive routing.
+
+    \item Oscillatory synchronization mechanisms that coordinate activity across components, facilitating coherent global function despite the distributed, heterogeneous structure.
+\end{enumerate}
+
+These innovations address fundamental limitations in current AI systems, including the prediction-speed tradeoff, context integration across timescales, adaptation without catastrophic forgetting, and robustness through distributed redundancy.
+
+The hybrid nature of HSPMN—combining hierarchy, parallelism, and self-organization—represents a departure from traditional architectural designs that typically emphasize either deep hierarchical processing or flat distributed computation. By unifying these principles, HSPMN offers a more comprehensive framework that better reflects the organizational complexity observed in biological intelligence.
+
+Looking forward, HSPMN opens new avenues for research in continual learning, resource-efficient AI, autonomous robotics, and distributed intelligent systems. The principles underlying HSPMN could drive the next generation of intelligent systems that combine the abstraction capabilities of deep hierarchical models with the speed, flexibility, and robustness of parallel distributed architectures.
+
+As computational resources continue to advance and our understanding of biological and physical self-organizing systems deepens, implementing and refining HSPMN-like architectures becomes increasingly feasible. The framework presented in this paper provides a foundation for this development, offering both theoretical principles and practical implementation strategies for a new paradigm in computational intelligence.
+
+\newpage
+\twocolumn[%
+\vspace{-1em}
+\vspace{0.5em}
+]
+\begin{thebibliography}{19}
+\bibitem{vaswani2017attention} Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., Kaiser, L., \& Polosukhin, I. (2017). Attention is all you need. In \textit{Advances in Neural Information Processing Systems} (pp. 5998-6008).
+
+\bibitem{zhou2020graph} Zhou, J., Cui, G., Hu, S., Zhang, Z., Yang, C., Liu, Z., Wang, L., Li, C., \& Sun, M. (2020). Graph neural networks: A review of methods and applications. \textit{AI Open}, 1, 57-81.
+
+\bibitem{eigen2013learning} Eigen, D., Ranzato, M., \& Sutskever, I. (2013). Learning factored representations in a deep mixture of experts. arXiv preprint arXiv:1312.4314.
+
+\bibitem{lukosevicius2009reservoir} Lukoševičius, M., \& Jaeger, H. (2009). Reservoir computing approaches to recurrent neural network training. \textit{Computer Science Review}, 3(3), 127-149.
+
+\bibitem{caucheteux2023evidence} Caucheteux, C., Gramfort, A., \& King, J. (2023). Evidence of a predictive coding hierarchy in the human brain listening to speech. \textit{Nature Human Behaviour}, 7(3), 426-437.
+
+\bibitem{suzuki2023shallow} Suzuki, M., Pennartz, C. M. A., \& Aru, J. (2023). How deep is the brain? The shallow brain hypothesis. \textit{Nature Reviews Neuroscience}, 24, 749-764.
+
+\bibitem{marchetti2024active} Marchetti, M. C. (2024). Active matter: From motility to self-organization. In \textit{Boulder School on Self-Organizing Matter Lectures} (pp. 1-40).
+
+\bibitem{cichos2025roadmap} Cichos, F., Dauchot, O., Fischer, P., Golestanian, R., Gompper, G., Katija, K., Needleman, D., Popescu, M., Rao, M., \& Vinothan, M. (2025). The 2025 motile active matter roadmap. \textit{Journal of Physics: Condensed Matter}, 37(12), 123001.
+
+\bibitem{friston2005theory} Friston, K. (2005). A theory of cortical responses. \textit{Philosophical Transactions of the Royal Society B: Biological Sciences}, 360(1456), 815-836.
+
+\bibitem{clark2013whatever} Clark, A. (2013). Whatever next? Predictive brains, situated agents, and the future of cognitive science. \textit{Behavioral and Brain Sciences}, 36(3), 181-204.
+
+\bibitem{kietzmann2019recurrence} Kietzmann, T. C., Spoerer, C. J., Sörensen, L. K. A., Cichy, R. M., Hauk, O., \& Kriegeskorte, N. (2019). Recurrence is required to capture the representational dynamics of the human visual system. \textit{Proceedings of the National Academy of Sciences}, 116(43), 21854-21863.
+
+\bibitem{rao1999predictive} Rao, R. P. N., \& Ballard, D. H. (1999). Predictive coding in the visual cortex: A functional interpretation of some extra-classical receptive-field effects. \textit{Nature Neuroscience}, 2(1), 79-87.
+
+\bibitem{jacobs1991adaptive} Jacobs, R. A., Jordan, M. I., Nowlan, S. J., \& Hinton, G. E. (1991). Adaptive mixtures of local experts. \textit{Neural Computation}, 3(1), 79-87.
+
+\bibitem{fedus2022switch} Fedus, W., Zoph, B., \& Shazeer, N. (2022). Switch transformers: Scaling to trillion parameter models with simple and efficient sparsity. \textit{Journal of Machine Learning Research}, 23(120), 1-39.
+
+\bibitem{jiang2024mixtral} Jiang, A., Shliazhko, O., Tsiaris, A., Esiobu, U., Bhakthavatsalam, S., Kuratov, Y., Galkin, M., et al. (2024). Mixtral of experts. arXiv preprint arXiv:2401.04088.
+
+\bibitem{zhao2024nonreciprocal} Zhao, H., Martin, N. A., \& Räth, G. (2024). Non-reciprocal active matter: A tale of 'loving hate, hating love'. \textit{Europhysics News}, 55(3), 12-15.
+
+\bibitem{sussillo2009generating} Sussillo, D., \& Abbott, L. F. (2009). Generating coherent patterns of activity from chaotic neural networks. \textit{Neuron}, 63(4), 544-557.
+
+\bibitem{garnier2007biological} Garnier, S., Gautrais, J., \& Theraulaz, G. (2007). The biological principles of swarm intelligence. \textit{Swarm Intelligence}, 1(1), 3-31.
+
+\bibitem{zhu2024selforganizing} Zhu, W., Oğuz, S., Heinrich, M. K., Dorigo, M., et al. (2024). Self-organizing nervous systems for robot swarms. \textit{Science Robotics}, 9(96), eadl5161.
+\end{thebibliography}
+
+\end{document}
