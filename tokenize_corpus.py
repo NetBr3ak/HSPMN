@@ -3,6 +3,7 @@
 Output: data/{train,valid}_tokens.npy as int32 arrays. Single contiguous stream
 per split; the training loop slices windows of S+1 from it.
 """
+
 import argparse
 import os
 import time
@@ -21,8 +22,11 @@ def load_parquet_text(path):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--data_dir", default=DEFAULT_DATA_DIR,
-                   help="Data directory (default: /opt/docker/LLM/HSPMN/data)")
+    p.add_argument(
+        "--data_dir",
+        default=DEFAULT_DATA_DIR,
+        help="Data directory (default: /opt/docker/LLM/HSPMN/data)",
+    )
     p.add_argument("--out_train", default=None)
     p.add_argument("--out_valid", default=None)
     args = p.parse_args()
@@ -43,11 +47,19 @@ def main():
 
     for split, files, out in [
         ("valid", [f"{args.data_dir}/wikitext_valid.parquet"], args.out_valid),
-        ("train", [f"{args.data_dir}/wikitext_train_0.parquet",
-                   f"{args.data_dir}/wikitext_train_1.parquet"], args.out_train),
+        (
+            "train",
+            [
+                f"{args.data_dir}/wikitext_train_0.parquet",
+                f"{args.data_dir}/wikitext_train_1.parquet",
+            ],
+            args.out_train,
+        ),
     ]:
         if os.path.exists(out):
-            print(f"{split}: {out} exists, skipping ({os.path.getsize(out)/1e6:.1f} MB)")
+            print(
+                f"{split}: {out} exists, skipping ({os.path.getsize(out) / 1e6:.1f} MB)"
+            )
             continue
         print(f"\n=== {split} ===")
         t0 = time.time()
@@ -62,13 +74,16 @@ def main():
             # Encode in batches - tokenizers' encode_batch handles parallel.
             BATCH = 4096
             for start in range(0, len(texts), BATCH):
-                chunk = texts[start:start + BATCH]
+                chunk = texts[start : start + BATCH]
                 encs = tokenizer.encode_batch(chunk)
                 for e in encs:
                     all_tokens.extend(e.ids)
                     all_tokens.append(eos_id)
                 if start % (BATCH * 10) == 0:
-                    print(f"    {start}/{len(texts)} done  total tokens={len(all_tokens):,}", flush=True)
+                    print(
+                        f"    {start}/{len(texts)} done  total tokens={len(all_tokens):,}",
+                        flush=True,
+                    )
         arr = np.array(all_tokens, dtype=np.int32)
         np.save(out, arr)
         elapsed = time.time() - t0

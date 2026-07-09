@@ -13,6 +13,7 @@ batch, log per-layer gate statistics:
 
 Output: results/phase2_h1_router_diagnostic_2026-05-12.md
 """
+
 import argparse
 import json
 from pathlib import Path
@@ -36,15 +37,18 @@ def gather_router_stats(model, valid_tok, n_batches, batch, seq, device):
     def make_hook(layer_idx):
         def hook(module, inputs, output):
             g = output.gate
-            stats.setdefault(layer_idx, []).append({
-                "gate_mean": float(g.mean().item()),
-                "gate_std": float(g.std().item()),
-                "active_fraction": float((g > 0).float().mean().item()),
-                "gate_conditional_mean": float(
-                    g[g > 0].mean().item() if (g > 0).any() else 0.0
-                ),
-                "gate_l1": float(g.abs().mean().item()),
-            })
+            stats.setdefault(layer_idx, []).append(
+                {
+                    "gate_mean": float(g.mean().item()),
+                    "gate_std": float(g.std().item()),
+                    "active_fraction": float((g > 0).float().mean().item()),
+                    "gate_conditional_mean": float(
+                        g[g > 0].mean().item() if (g > 0).any() else 0.0
+                    ),
+                    "gate_l1": float(g.abs().mean().item()),
+                }
+            )
+
         return hook
 
     for idx, layer in enumerate(model.layers):
@@ -55,7 +59,7 @@ def gather_router_stats(model, valid_tok, n_batches, batch, seq, device):
     with torch.no_grad():
         for _ in range(n_batches):
             starts = np.random.randint(0, len(valid_tok) - seq - 1, size=(batch,))
-            x = np.stack([valid_tok[s:s + seq] for s in starts])
+            x = np.stack([valid_tok[s : s + seq] for s in starts])
             x_t = torch.from_numpy(x).long().to(device)
             model(x_t)
 
@@ -66,8 +70,9 @@ def gather_router_stats(model, valid_tok, n_batches, batch, seq, device):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--variant", default="v4-gdn-nsa",
-                    choices=["v4-gdn-nsa", "v4-rwkv7-nsa"])
+    ap.add_argument(
+        "--variant", default="v4-gdn-nsa", choices=["v4-gdn-nsa", "v4-rwkv7-nsa"]
+    )
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--lr_tag", default="1e-3")
     ap.add_argument("--n_batches", type=int, default=8)
@@ -77,14 +82,24 @@ def main():
     ap.add_argument("--dim", type=int, default=768)
     ap.add_argument("--num_heads", type=int, default=12)
     ap.add_argument("--num_kv_heads", type=int, default=4)
-    ap.add_argument("--data_dir", default=_DEFAULT_DATA_DIR,
-                    help="Path to data directory with tokenized validation/train splits")
-    ap.add_argument("--ckpt_root", default=_DEFAULT_CKPT_ROOT,
-                    help="Root directory of checkpoint checkpoints")
-    ap.add_argument("--out_dir", default="/opt/docker/LLM/HSPMN/results",
-                    help="Output directory for markdown and JSON results")
-    ap.add_argument("--date_tag", default="2026-05-12",
-                    help="Date tag for output filename")
+    ap.add_argument(
+        "--data_dir",
+        default=_DEFAULT_DATA_DIR,
+        help="Path to data directory with tokenized validation/train splits",
+    )
+    ap.add_argument(
+        "--ckpt_root",
+        default=_DEFAULT_CKPT_ROOT,
+        help="Root directory of checkpoint checkpoints",
+    )
+    ap.add_argument(
+        "--out_dir",
+        default="/opt/docker/LLM/HSPMN/results",
+        help="Output directory for markdown and JSON results",
+    )
+    ap.add_argument(
+        "--date_tag", default="2026-05-12", help="Date tag for output filename"
+    )
     args = ap.parse_args()
 
     seed_everything(args.seed)
@@ -93,10 +108,17 @@ def main():
 
     cfg = TrainConfig(
         variant=args.variant,
-        n_layers=args.n_layers, dim=args.dim,
-        num_heads=args.num_heads, num_kv_heads=args.num_kv_heads,
-        seq_len=args.seq_len, batch_size=args.batch, grad_accum=1,
-        steps=1, lr=1e-3, warmup_steps=1, nsa_window=256,
+        n_layers=args.n_layers,
+        dim=args.dim,
+        num_heads=args.num_heads,
+        num_kv_heads=args.num_kv_heads,
+        seq_len=args.seq_len,
+        batch_size=args.batch,
+        grad_accum=1,
+        steps=1,
+        lr=1e-3,
+        warmup_steps=1,
+        nsa_window=256,
     )
 
     valid_tok = np.load(f"{args.data_dir}/valid_tokens.npy", mmap_mode="r")
@@ -113,8 +135,9 @@ def main():
     model.load_state_dict(state["model"])
     print(f"loaded ckpt: {ckpt_path}")
 
-    stats = gather_router_stats(model, valid_tok, args.n_batches,
-                                args.batch, args.seq_len, device)
+    stats = gather_router_stats(
+        model, valid_tok, args.n_batches, args.batch, args.seq_len, device
+    )
     if not stats:
         print("WARNING: no router stats recorded - model has no `router` attribute.")
         return
@@ -131,8 +154,11 @@ def main():
     cm = [r["gate_conditional_mean"] for r in rows]
     h_route_by_layer = [4.0 * p * (1.0 - p) for p in af]
     overall = {
-        "variant": args.variant, "lr_tag": args.lr_tag, "seed": args.seed,
-        "n_layers": len(rows), "n_batches": args.n_batches,
+        "variant": args.variant,
+        "lr_tag": args.lr_tag,
+        "seed": args.seed,
+        "n_layers": len(rows),
+        "n_batches": args.n_batches,
         "mean_active_fraction": float(np.mean(af)),
         "min_active_fraction": float(np.min(af)),
         "max_active_fraction": float(np.max(af)),
@@ -149,52 +175,61 @@ def main():
     out_dir = Path(args.out_dir)
     out_stem = f"router_diagnostic_{args.variant}_lr{args.lr_tag}_seed{args.seed}"
     out_md = out_dir / f"{out_stem}.md"
-    lines = [f"# H1 Router-Collapse Diagnostic on {args.variant}",
-             "",
-             f"**Date:** {args.date_tag}. **Checkpoint:** `{ckpt_path}`.",
-             f"**Validation batches:** {args.n_batches} × {args.batch} × {args.seq_len}.",
-             "",
-             "## Headline numbers",
-             "",
-             f"- mean active_fraction across layers: {overall['mean_active_fraction']:.4f}",
-             f"- target_sparsity (config): 0.25 (set by ALF-LB bias)",
-             f"- min/max active_fraction: {overall['min_active_fraction']:.4f} / {overall['max_active_fraction']:.4f}",
-             f"- layerwise routing-health H_route: {overall['h_route']:.4f}",
-             f"- dead / near-dead / saturated layers: {overall['dead_layers']} / {overall['near_dead_layers']} / {overall['saturated_layers']}",
-             f"- mean gate.mean()|active: {overall['mean_gate_conditional_mean']:.4f}",
-             "",
-             "## Per-layer",
-             "",
-             "| Layer | active_fraction | H_route_layer | std | gate.mean() | gate.std() | gate.mean()|active | L1 |",
-             "|---|---|---|---|---|---|---|---|"]
+    lines = [
+        f"# H1 Router-Collapse Diagnostic on {args.variant}",
+        "",
+        f"**Date:** {args.date_tag}. **Checkpoint:** `{ckpt_path}`.",
+        f"**Validation batches:** {args.n_batches} × {args.batch} × {args.seq_len}.",
+        "",
+        "## Headline numbers",
+        "",
+        f"- mean active_fraction across layers: {overall['mean_active_fraction']:.4f}",
+        "- target_sparsity (config): 0.25 (set by ALF-LB bias)",
+        f"- min/max active_fraction: {overall['min_active_fraction']:.4f} / {overall['max_active_fraction']:.4f}",
+        f"- layerwise routing-health H_route: {overall['h_route']:.4f}",
+        f"- dead / near-dead / saturated layers: {overall['dead_layers']} / {overall['near_dead_layers']} / {overall['saturated_layers']}",
+        f"- mean gate.mean()|active: {overall['mean_gate_conditional_mean']:.4f}",
+        "",
+        "## Per-layer",
+        "",
+        "| Layer | active_fraction | H_route_layer | std | gate.mean() | gate.std() | gate.mean()|active | L1 |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
     for r in rows:
-        lines.append(f"| {r['layer']} | {r['active_fraction']:.4f} | "
-                     f"{r['h_route_layer']:.4f} | {r['std_active_fraction']:.4f} | {r['gate_mean']:.4f} | "
-                     f"{r['gate_std']:.4f} | {r['gate_conditional_mean']:.4f} | "
-                     f"{r['gate_l1']:.4f} |")
+        lines.append(
+            f"| {r['layer']} | {r['active_fraction']:.4f} | "
+            f"{r['h_route_layer']:.4f} | {r['std_active_fraction']:.4f} | {r['gate_mean']:.4f} | "
+            f"{r['gate_std']:.4f} | {r['gate_conditional_mean']:.4f} | "
+            f"{r['gate_l1']:.4f} |"
+        )
     lines.append("")
     lines.append("## Interpretation")
     lines.append("")
     mean_af = overall["mean_active_fraction"]
     if mean_af < 0.05:
-        lines.append(f"**H1 CONFIRMED:** mean active_fraction = {mean_af:.4f} far below "
-                     "target_sparsity=0.25; ReMoE gate collapsed near-off. Contextual stream "
-                     "effectively skipped on ~95% of tokens.")
+        lines.append(
+            f"**H1 CONFIRMED:** mean active_fraction = {mean_af:.4f} far below "
+            "target_sparsity=0.25; ReMoE gate collapsed near-off. Contextual stream "
+            "effectively skipped on ~95% of tokens."
+        )
     elif abs(mean_af - 0.25) < 0.05:
-        lines.append(f"**H1 NOT confirmed:** mean active_fraction = {mean_af:.4f} matches "
-                     "target_sparsity=0.25 - ALF-LB held the gate. Loss does not come from "
-                     "gate-side collapse.")
+        lines.append(
+            f"**H1 NOT confirmed:** mean active_fraction = {mean_af:.4f} matches "
+            "target_sparsity=0.25 - ALF-LB held the gate. Loss does not come from "
+            "gate-side collapse."
+        )
     else:
-        lines.append(f"**H1 partial:** mean active_fraction = {mean_af:.4f} drifted from "
-                     "target=0.25. Gate is not fully off, but ALF-LB did not hold target - "
-                     "partial absorption likely.")
+        lines.append(
+            f"**H1 partial:** mean active_fraction = {mean_af:.4f} drifted from "
+            "target=0.25. Gate is not fully off, but ALF-LB did not hold target - "
+            "partial absorption likely."
+        )
     lines.append("")
     out_md.write_text("\n".join(lines))
     print(f"\n→ {out_md}")
     print(f"summary: {overall}")
 
-    (out_dir / f"{out_stem}.json").write_text(
-        json.dumps(overall, indent=2))
+    (out_dir / f"{out_stem}.json").write_text(json.dumps(overall, indent=2))
 
 
 if __name__ == "__main__":

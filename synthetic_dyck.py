@@ -16,6 +16,7 @@ Merrill & Sabharwal 2023). Mamba-3 / RWKV-7 should pass.
 Reference: standard Dyck-k benchmark from the formal-language-recognition
 literature (Hewitt et al., Bhattamishra et al.).
 """
+
 from typing import Tuple
 
 import torch
@@ -24,7 +25,9 @@ import torch
 VOCAB_DYCK2 = 5  # 0='(' 1=')' 2='[' 3=']' 4=PAD
 
 
-def sample_dyck2(length: int, max_depth: int, generator: torch.Generator = None) -> torch.Tensor:
+def sample_dyck2(
+    length: int, max_depth: int, generator: torch.Generator = None
+) -> torch.Tensor:
     """Generate a single valid Dyck-2 string of *exactly* `length` tokens.
 
     Random walk over (open, close, open, close, ...) decisions, biased so the
@@ -71,8 +74,9 @@ def sample_dyck2(length: int, max_depth: int, generator: torch.Generator = None)
     return seq
 
 
-def build_dyck2_batch(B: int, length: int, max_depth: int = 16,
-                      device: str = "cpu", seed: int = 42) -> Tuple[torch.Tensor, torch.Tensor]:
+def build_dyck2_batch(
+    B: int, length: int, max_depth: int = 16, device: str = "cpu", seed: int = 42
+) -> Tuple[torch.Tensor, torch.Tensor]:
     """Return (ids, labels) for next-token training on Dyck-2."""
     gen = torch.Generator().manual_seed(seed)
     seqs = torch.stack([sample_dyck2(length, max_depth, gen) for _ in range(B)])
@@ -82,22 +86,30 @@ def build_dyck2_batch(B: int, length: int, max_depth: int = 16,
 
 
 @torch.no_grad()
-def evaluate_dyck2(model, length: int, max_depth: int = 16,
-                   n_examples: int = 256, device: str = "cuda",
-                   batch_size: int = 32) -> dict:
+def evaluate_dyck2(
+    model,
+    length: int,
+    max_depth: int = 16,
+    n_examples: int = 256,
+    device: str = "cuda",
+    batch_size: int = 32,
+) -> dict:
     """Return next-token PPL on held-out Dyck-2 strings."""
     model.train(False)
     losses = []
     n_tokens = 0
     for start in range(0, n_examples, batch_size):
         bs = min(batch_size, n_examples - start)
-        ids, labels = build_dyck2_batch(bs, length, max_depth, device=device, seed=1000 + start)
+        ids, labels = build_dyck2_batch(
+            bs, length, max_depth, device=device, seed=1000 + start
+        )
         out = model(ids, labels=labels)
         loss = float(out["loss"].item())
         losses.append(loss * bs)
         n_tokens += bs
     mean_loss = sum(losses) / max(1, n_tokens)
     import math
+
     return {"loss": mean_loss, "ppl": math.exp(mean_loss), "n_examples": n_examples}
 
 

@@ -25,7 +25,7 @@ where `LinearStateSpaceStream` lives in the v4 block - same input/output
 contract: `forward(q_raw, k_raw, v_raw) -> [B, S, dim]`, with shared QKV
 projections from the surrounding block. SwiGLU MLP is kept identical.
 """
-import math
+
 from typing import Optional
 
 import torch
@@ -34,17 +34,18 @@ import torch.nn.functional as F
 
 try:
     from fla.ops.gated_delta_rule import chunk_gated_delta_rule
+
     HAS_FLA = True
 except ImportError:
     HAS_FLA = False
 
 
 def _chunked_gated_delta(
-    q: torch.Tensor,   # [B, S, H, D]
-    k: torch.Tensor,   # [B, S, H, D]
-    v: torch.Tensor,   # [B, S, H, D]
+    q: torch.Tensor,  # [B, S, H, D]
+    k: torch.Tensor,  # [B, S, H, D]
+    v: torch.Tensor,  # [B, S, H, D]
     alpha: torch.Tensor,  # [B, S, H] - forget gate, in (0, 1]
-    beta: torch.Tensor,   # [B, S, H] - write rate, in (0, 1]
+    beta: torch.Tensor,  # [B, S, H] - write rate, in (0, 1]
     chunk_size: int = 64,
 ) -> torch.Tensor:
     """Chunkwise parallel Gated DeltaNet.
@@ -64,18 +65,18 @@ def _chunked_gated_delta(
     for cs in range(0, S, chunk_size):
         ce = min(cs + chunk_size, S)
         for t in range(cs, ce):
-            q_t = q[:, t].float()        # [B, H, D]
-            k_t = k[:, t].float()        # [B, H, D]
-            v_t = v[:, t].float()        # [B, H, D]
-            a_t = alpha_f32[:, t]        # [B, H]
-            b_t = beta_f32[:, t]         # [B, H]
+            q_t = q[:, t].float()  # [B, H, D]
+            k_t = k[:, t].float()  # [B, H, D]
+            v_t = v[:, t].float()  # [B, H, D]
+            a_t = alpha_f32[:, t]  # [B, H]
+            b_t = beta_f32[:, t]  # [B, H]
 
             # state shape: [B, H, D, D]; broadcast a_t and b_t over (D, D).
-            a_view = a_t.unsqueeze(-1).unsqueeze(-1)        # [B, H, 1, 1]
-            b_view = b_t.unsqueeze(-1).unsqueeze(-1)        # [B, H, 1, 1]
+            a_view = a_t.unsqueeze(-1).unsqueeze(-1)  # [B, H, 1, 1]
+            b_view = b_t.unsqueeze(-1).unsqueeze(-1)  # [B, H, 1, 1]
 
             # k_t outer k_t - only one row of state needs adjusting per token.
-            kkT = torch.einsum("bhd,bhe->bhde", k_t, k_t)   # [B, H, D, D]
+            kkT = torch.einsum("bhd,bhe->bhde", k_t, k_t)  # [B, H, D, D]
             update = b_view * torch.einsum("bhde,bhef->bhdf", kkT, state)
             forget = a_view * state
             state = forget - update + b_view * torch.einsum("bhd,bhe->bhde", v_t, k_t)
@@ -104,9 +105,16 @@ class GatedDeltaNetReflexive(nn.Module):
     - Return [B, S, dim].
     """
 
-    def __init__(self, dim: int, num_heads: int, num_kv_heads: int, head_dim: int,
-                 mlp_ratio: int = 4, chunk_size: int = 64,
-                 use_fla: Optional[bool] = None):
+    def __init__(
+        self,
+        dim: int,
+        num_heads: int,
+        num_kv_heads: int,
+        head_dim: int,
+        mlp_ratio: int = 4,
+        chunk_size: int = 64,
+        use_fla: Optional[bool] = None,
+    ):
         super().__init__()
         self.dim = dim
         self.num_heads = num_heads
@@ -124,8 +132,8 @@ class GatedDeltaNetReflexive(nn.Module):
         self.gate_beta = nn.Linear(num_kv_heads * head_dim, num_heads, bias=True)
         nn.init.xavier_uniform_(self.gate_alpha.weight, gain=0.02)
         nn.init.xavier_uniform_(self.gate_beta.weight, gain=0.02)
-        nn.init.constant_(self.gate_alpha.bias, 4.0)   # sigmoid(4) ≈ 0.98
-        nn.init.constant_(self.gate_beta.bias, -2.0)   # sigmoid(-2) ≈ 0.12
+        nn.init.constant_(self.gate_alpha.bias, 4.0)  # sigmoid(4) ≈ 0.98
+        nn.init.constant_(self.gate_beta.bias, -2.0)  # sigmoid(-2) ≈ 0.12
 
         self.out_norm = nn.RMSNorm(dim)
         hidden = dim * mlp_ratio
@@ -135,20 +143,22 @@ class GatedDeltaNetReflexive(nn.Module):
         for w in [self.gate_proj, self.up_proj, self.down_proj]:
             nn.init.xavier_uniform_(w.weight, gain=0.02)
 
-    def forward(self, q_raw: torch.Tensor, k_raw: torch.Tensor, v_raw: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, q_raw: torch.Tensor, k_raw: torch.Tensor, v_raw: torch.Tensor
+    ) -> torch.Tensor:
         B, S, _ = q_raw.shape
         H, D = self.num_heads, self.head_dim
 
         # Compute gates from K (avoid plumbing extra inputs).
-        alpha = torch.sigmoid(self.gate_alpha(k_raw))   # [B, S, H], in (0, 1)
-        beta = torch.sigmoid(self.gate_beta(k_raw))     # [B, S, H]
+        alpha = torch.sigmoid(self.gate_alpha(k_raw))  # [B, S, H], in (0, 1)
+        beta = torch.sigmoid(self.gate_beta(k_raw))  # [B, S, H]
 
         # Reshape Q/K/V to [B, S, H, D]; expand KV heads to match query heads (GQA).
         q = q_raw.view(B, S, H, D)
         k = k_raw.view(B, S, self.num_kv_heads, D)
         v = v_raw.view(B, S, self.num_kv_heads, D)
-        k = k.repeat_interleave(self.kv_groups, dim=2)   # [B, S, H, D]
-        v = v.repeat_interleave(self.kv_groups, dim=2)   # [B, S, H, D]
+        k = k.repeat_interleave(self.kv_groups, dim=2)  # [B, S, H, D]
+        v = v.repeat_interleave(self.kv_groups, dim=2)  # [B, S, H, D]
 
         if self.use_fla and q.is_cuda:
             # FLA expects gates as log(forget rate); we compute alpha as
@@ -156,7 +166,11 @@ class GatedDeltaNetReflexive(nn.Module):
             g_log = torch.log(alpha.float().clamp(min=1e-6))
             # FLA kernel handles SiLU+L2 norm internally when requested.
             attn, _ = chunk_gated_delta_rule(
-                q, k, v, g_log, beta,
+                q,
+                k,
+                v,
+                g_log,
+                beta,
                 use_qk_l2norm_in_kernel=True,
                 output_final_state=False,
             )
@@ -164,8 +178,10 @@ class GatedDeltaNetReflexive(nn.Module):
             # Reference path: SiLU+L2 norm in PyTorch, then chunked recurrence.
             k = F.silu(k)
             k = k / (k.norm(dim=-1, keepdim=True) + 1e-6)
-            attn = _chunked_gated_delta(q, k, v, alpha, beta, chunk_size=self.chunk_size)
-        attn_flat = attn.reshape(B, S, H * D)             # [B, S, dim]
+            attn = _chunked_gated_delta(
+                q, k, v, alpha, beta, chunk_size=self.chunk_size
+            )
+        attn_flat = attn.reshape(B, S, H * D)  # [B, S, dim]
 
         # SwiGLU MLP, identical to the v3 reflexive stream's tail.
         n = self.out_norm(attn_flat)

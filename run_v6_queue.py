@@ -46,6 +46,7 @@ continue-on-fail, per-job logs. Waits for the GPU to be free before stage 1.
     nohup python3 run_v6_queue.py > results/v6_queue.out 2>&1 &
     python3 run_v6_queue.py --list
 """
+
 import argparse
 import subprocess
 import time
@@ -56,12 +57,14 @@ ROOT = Path("/opt/docker/LLM/HSPMN")
 LOG = ROOT / "results" / "v6_queue.log"
 CKPT = "checkpoints_v6"
 
-PIS = ["00", "10", "25", "50"]           # tags; pi = tag/100
+PIS = ["00", "10", "25", "50"]  # tags; pi = tag/100
 SEEDS = [42, 1337, 2026]
 DIMS = "--n_layers 12 --dim 768 --num_heads 12 --num_kv_heads 4"
-BASE = (f"{DIMS} --seq_len 1024 --batch_size 16 --grad_accum 4 "
-        "--steps 3000 --warmup_steps 150 --lr 1e-3 --eval_every 500 "
-        "--eval_iters 32")
+BASE = (
+    f"{DIMS} --seq_len 1024 --batch_size 16 --grad_accum 4 "
+    "--steps 3000 --warmup_steps 150 --lr 1e-3 --eval_every 500 "
+    "--eval_iters 32"
+)
 PROBE_ARGS = f"--n_batches 16 --batch 2 --seq_len 512 {DIMS}"
 MI_ARGS = f"--n_batches 4 --batch 2 --seq_len 512 {DIMS}"
 
@@ -84,90 +87,133 @@ def final_ckpt(variant, pi, seed):
 
 def train_job(variant, pi, seed, extra=""):
     sd = save_dir(variant, pi, seed)
-    cmd = (f"python3 train_v4.py --variant {variant} {BASE} --seed {seed} "
-           f"--data_dir {data_dir(pi)} --save_dir {sd} {extra}")
-    return jb(f"train_{variant}_pi{pi}_s{seed}", cmd,
-              final_ckpt(variant, pi, seed), critical=True)
+    cmd = (
+        f"python3 train_v4.py --variant {variant} {BASE} --seed {seed} "
+        f"--data_dir {data_dir(pi)} --save_dir {sd} {extra}"
+    )
+    return jb(
+        f"train_{variant}_pi{pi}_s{seed}",
+        cmd,
+        final_ckpt(variant, pi, seed),
+        critical=True,
+    )
 
 
 QUEUE = []
 
 # ---- Stage 0: corpora (CPU; runs even while GPU is busy) -------------------
-QUEUE.append(jb("corpora",
-                "python3 build_mix_corpus.py --pis 0.0 0.1 0.25 0.5",
-                "data/mix_pi50/meta.json", critical=True))
+QUEUE.append(
+    jb(
+        "corpora",
+        "python3 build_mix_corpus.py --pis 0.0 0.1 0.25 0.5",
+        "data/mix_pi50/meta.json",
+        critical=True,
+    )
+)
 
 # ---- Stage 1+2 interleaved per pi: gated s42 -> ceiling -> controls --------
 for pi in PIS:
     QUEUE.append(train_job("hymba-with-nsa-gated", pi, 42))
-    QUEUE.append(jb(
-        f"ceiling_gated_pi{pi}",
-        f"python3 probe_gate_ceiling.py --variant hymba-with-nsa-gated "
-        f"--ckpt {final_ckpt('hymba-with-nsa-gated', pi, 42)} "
-        f"--data_dir {data_dir(pi)} {PROBE_ARGS} "
-        f"--out_md results/v6_ceiling_gated_pi{pi}.md",
-        f"results/v6_ceiling_gated_pi{pi}.md", critical=True))
+    QUEUE.append(
+        jb(
+            f"ceiling_gated_pi{pi}",
+            f"python3 probe_gate_ceiling.py --variant hymba-with-nsa-gated "
+            f"--ckpt {final_ckpt('hymba-with-nsa-gated', pi, 42)} "
+            f"--data_dir {data_dir(pi)} {PROBE_ARGS} "
+            f"--out_md results/v6_ceiling_gated_pi{pi}.md",
+            f"results/v6_ceiling_gated_pi{pi}.md",
+            critical=True,
+        )
+    )
     QUEUE.append(train_job("hymba-with-nsa-randgate", pi, 42))
     QUEUE.append(train_job("hymba-with-nsa", pi, 42))
     QUEUE.append(train_job("hymba-with-nsa-pcgate", pi, 42))
 
 for seed in (1337, 2026):
     for pi in PIS:
-        for v in ("hymba-with-nsa-gated", "hymba-with-nsa-randgate",
-                  "hymba-with-nsa", "hymba-with-nsa-pcgate"):
+        for v in (
+            "hymba-with-nsa-gated",
+            "hymba-with-nsa-randgate",
+            "hymba-with-nsa",
+            "hymba-with-nsa-pcgate",
+        ):
             QUEUE.append(train_job(v, pi, seed))
 
 for pi in PIS:
     for v in ("hymba-with-nsa-gated", "hymba-with-nsa-randgate"):
-        QUEUE.append(jb(
-            f"mi_{v.split('-')[-1]}_pi{pi}",
-            f"python3 measure_gate_channel_mi.py --variant {v} "
-            f"--ckpt {final_ckpt(v, pi, 42)} "
-            f"--label_ckpt {final_ckpt('hymba-with-nsa', pi, 42)} "
-            f"--data_dir {data_dir(pi)} {MI_ARGS} "
-            f"--out_md results/v6_mi_{v.split('-')[-1]}_pi{pi}.md",
-            f"results/v6_mi_{v.split('-')[-1]}_pi{pi}.md"))
+        QUEUE.append(
+            jb(
+                f"mi_{v.split('-')[-1]}_pi{pi}",
+                f"python3 measure_gate_channel_mi.py --variant {v} "
+                f"--ckpt {final_ckpt(v, pi, 42)} "
+                f"--label_ckpt {final_ckpt('hymba-with-nsa', pi, 42)} "
+                f"--data_dir {data_dir(pi)} {MI_ARGS} "
+                f"--out_md results/v6_mi_{v.split('-')[-1]}_pi{pi}.md",
+                f"results/v6_mi_{v.split('-')[-1]}_pi{pi}.md",
+            )
+        )
 
 # ---- Stage 3: v6 decorrelated-stream architecture --------------------------
-for coef in ("0.03", "0.3"):   # 0.1 is covered by the 3-seed arm below
+for coef in ("0.03", "0.3"):  # 0.1 is covered by the 3-seed arm below
     sd = f"{CKPT}/hymba-with-nsa-decor_pi25_s42_c{coef}"
-    QUEUE.append(jb(
-        f"decor_sweep_c{coef}",
-        f"python3 train_v4.py --variant hymba-with-nsa-decor {BASE} --seed 42 "
-        f"--decor_coef {coef} --data_dir {data_dir('25')} --save_dir {sd}",
-        f"{sd}/hymba-with-nsa-decor_final.pt"))
+    QUEUE.append(
+        jb(
+            f"decor_sweep_c{coef}",
+            f"python3 train_v4.py --variant hymba-with-nsa-decor {BASE} --seed 42 "
+            f"--decor_coef {coef} --data_dir {data_dir('25')} --save_dir {sd}",
+            f"{sd}/hymba-with-nsa-decor_final.pt",
+        )
+    )
 
 for pi in ("00", "25"):
     for seed in SEEDS:
         for v in ("hymba-with-nsa-decor", "hymba-with-nsa-decor-gated"):
             QUEUE.append(train_job(v, pi, seed, extra="--decor_coef 0.1"))
 
-QUEUE.append(jb(
-    "ceiling_decor_gated_pi25",
-    f"python3 probe_gate_ceiling.py --variant hymba-with-nsa-decor-gated "
-    f"--ckpt {final_ckpt('hymba-with-nsa-decor-gated', '25', 42)} "
-    f"--data_dir {data_dir('25')} {PROBE_ARGS} "
-    f"--out_md results/v6_ceiling_decor_gated_pi25.md",
-    "results/v6_ceiling_decor_gated_pi25.md", critical=True))
+QUEUE.append(
+    jb(
+        "ceiling_decor_gated_pi25",
+        f"python3 probe_gate_ceiling.py --variant hymba-with-nsa-decor-gated "
+        f"--ckpt {final_ckpt('hymba-with-nsa-decor-gated', '25', 42)} "
+        f"--data_dir {data_dir('25')} {PROBE_ARGS} "
+        f"--out_md results/v6_ceiling_decor_gated_pi25.md",
+        "results/v6_ceiling_decor_gated_pi25.md",
+        critical=True,
+    )
+)
 
 # ---- Stage 4: split eval for every trained checkpoint ----------------------
-_split_variants = [("hymba-with-nsa-gated", PIS), ("hymba-with-nsa-randgate", PIS),
-                   ("hymba-with-nsa", PIS), ("hymba-with-nsa-pcgate", PIS),
-                   ("hymba-with-nsa-decor", ("00", "25")),
-                   ("hymba-with-nsa-decor-gated", ("00", "25"))]
+_split_variants = [
+    ("hymba-with-nsa-gated", PIS),
+    ("hymba-with-nsa-randgate", PIS),
+    ("hymba-with-nsa", PIS),
+    ("hymba-with-nsa-pcgate", PIS),
+    ("hymba-with-nsa-decor", ("00", "25")),
+    ("hymba-with-nsa-decor-gated", ("00", "25")),
+]
 for v, pis in _split_variants:
     for pi in pis:
         for seed in SEEDS:
             out = f"results/v6_split_{v}_pi{pi}_s{seed}.md"
-            QUEUE.append(jb(
-                f"split_{v}_pi{pi}_s{seed}",
-                f"python3 eval_mix_split.py --variant {v} "
-                f"--ckpt {final_ckpt(v, pi, seed)} "
-                f"--data_dir {data_dir(pi)} {DIMS} --out_md {out}", out))
+            QUEUE.append(
+                jb(
+                    f"split_{v}_pi{pi}_s{seed}",
+                    f"python3 eval_mix_split.py --variant {v} "
+                    f"--ckpt {final_ckpt(v, pi, seed)} "
+                    f"--data_dir {data_dir(pi)} {DIMS} --out_md {out}",
+                    out,
+                )
+            )
 
 # ---- Stage 5: aggregate ----------------------------------------------------
-QUEUE.append(jb("aggregate", "python3 aggregate_v6.py",
-                "results/v6_routability_summary.md", critical=True))
+QUEUE.append(
+    jb(
+        "aggregate",
+        "python3 aggregate_v6.py",
+        "results/v6_routability_summary.md",
+        critical=True,
+    )
+)
 
 
 def stamp():
@@ -188,8 +234,9 @@ def done(j):
 def gpu_free(min_free_mib=24000):
     try:
         out = subprocess.check_output(
-            ["nvidia-smi", "--query-gpu=memory.free",
-             "--format=csv,noheader,nounits"], text=True)
+            ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,noheader,nounits"],
+            text=True,
+        )
         return int(out.strip().splitlines()[0]) >= min_free_mib
     except Exception:
         return True
@@ -205,7 +252,7 @@ def wait_for_gpu(job_name):
         time.sleep(300)
         waited += 300
     if waited:
-        log(f"GPU free after {waited/3600:.1f} h wait")
+        log(f"GPU free after {waited / 3600:.1f} h wait")
 
 
 def run_job(j):
@@ -216,11 +263,14 @@ def run_job(j):
     log(f"START {j['name']}: {j['cmd']}")
     jlog = ROOT / "results" / f"v6_{j['name']}.log"
     with open(jlog, "w") as f:
-        rc = subprocess.call(j["cmd"], shell=True, cwd=ROOT, stdout=f,
-                             stderr=subprocess.STDOUT)
+        rc = subprocess.call(
+            j["cmd"], shell=True, cwd=ROOT, stdout=f, stderr=subprocess.STDOUT
+        )
     ok = done(j)
-    log(f"END   {j['name']}: rc={rc} artifact={'OK' if ok else 'MISSING'}; "
-        f"log={jlog.name}")
+    log(
+        f"END   {j['name']}: rc={rc} artifact={'OK' if ok else 'MISSING'}; "
+        f"log={jlog.name}"
+    )
     return ok
 
 
@@ -231,8 +281,10 @@ def main():
     args = ap.parse_args()
     if args.list:
         for j in QUEUE:
-            print(f"  {'DONE' if done(j) else 'pending':8s} {j['name']}"
-                  f"{' [critical]' if j['critical'] else ''}")
+            print(
+                f"  {'DONE' if done(j) else 'pending':8s} {j['name']}"
+                f"{' [critical]' if j['critical'] else ''}"
+            )
         print(f"\n{sum(1 for j in QUEUE if not done(j))} pending of {len(QUEUE)}")
         return
     jobs = QUEUE if not args.only else [j for j in QUEUE if j["name"] in args.only]

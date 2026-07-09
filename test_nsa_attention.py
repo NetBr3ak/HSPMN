@@ -1,7 +1,13 @@
 """Tests for NSA triple-branch attention."""
+
 import unittest
 import torch
-from nsa_attention import NSAAttention, _compress_branch, _select_branch, _sliding_window_attention
+from nsa_attention import (
+    NSAAttention,
+    _compress_branch,
+    _select_branch,
+    _sliding_window_attention,
+)
 from utils_v3_0 import seed_everything
 
 
@@ -38,7 +44,9 @@ class TestNSA(unittest.TestCase):
         k = torch.randn(self.B, self.H, self.S, self.D)
         v = torch.randn(self.B, self.H, self.S, self.D)
         K = 16
-        idx = torch.stack([torch.sort(torch.randperm(self.S)[:K])[0] for _ in range(self.B)])
+        idx = torch.stack(
+            [torch.sort(torch.randperm(self.S)[:K])[0] for _ in range(self.B)]
+        )
         out = _select_branch(q, k, v, idx, scale=1.0)
         self.assertEqual(out.shape, q.shape)
         self.assertTrue(torch.isfinite(out).all())
@@ -53,12 +61,16 @@ class TestNSA(unittest.TestCase):
         self.assertTrue(torch.isfinite(out).all())
 
     def test_full_nsa_module(self):
-        nsa = NSAAttention(self.H, self.D, compress_block_size=32, compress_stride=16, window_size=64)
+        nsa = NSAAttention(
+            self.H, self.D, compress_block_size=32, compress_stride=16, window_size=64
+        )
         q = torch.randn(self.B, self.H, self.S, self.D)
         k = torch.randn(self.B, self.H, self.S, self.D)
         v = torch.randn(self.B, self.H, self.S, self.D)
         K = 32
-        idx = torch.stack([torch.sort(torch.randperm(self.S)[:K])[0] for _ in range(self.B)])
+        idx = torch.stack(
+            [torch.sort(torch.randperm(self.S)[:K])[0] for _ in range(self.B)]
+        )
         result = nsa(q, k, v, select_indices=idx)
         self.assertEqual(result.out.shape, (self.B, self.H, self.S, self.D))
         self.assertTrue(torch.isfinite(result.out).all())
@@ -69,12 +81,16 @@ class TestNSA(unittest.TestCase):
         self.assertTrue((result.gate_window <= 1).all())
 
     def test_nsa_gradients(self):
-        nsa = NSAAttention(self.H, self.D, compress_block_size=32, compress_stride=16, window_size=64).train()
+        nsa = NSAAttention(
+            self.H, self.D, compress_block_size=32, compress_stride=16, window_size=64
+        ).train()
         q = torch.randn(self.B, self.H, self.S, self.D, requires_grad=True)
         k = torch.randn(self.B, self.H, self.S, self.D, requires_grad=True)
         v = torch.randn(self.B, self.H, self.S, self.D, requires_grad=True)
         K = 32
-        idx = torch.stack([torch.sort(torch.randperm(self.S)[:K])[0] for _ in range(self.B)])
+        idx = torch.stack(
+            [torch.sort(torch.randperm(self.S)[:K])[0] for _ in range(self.B)]
+        )
         result = nsa(q, k, v, select_indices=idx)
         result.out.sum().backward()
         # Gate weights, q, k, v all must receive gradient.

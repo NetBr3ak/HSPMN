@@ -17,13 +17,15 @@ For HSPMN v5 we use:
 
 Reference target: RWKV-7 reaches ≥99% at S=8k, KV=256 (Peng et al. Table 7).
 """
+
 from typing import Tuple
 
 import torch
 
 
-def build_mqar_batch(B: int, N: int, M: int, vocab: int = 8192,
-                     device: str = "cpu", seed: int = None) -> Tuple[torch.Tensor, torch.Tensor]:
+def build_mqar_batch(
+    B: int, N: int, M: int, vocab: int = 8192, device: str = "cpu", seed: int = None
+) -> Tuple[torch.Tensor, torch.Tensor]:
     """Build B examples of MQAR with N KV pairs and M queries.
 
     Returns:
@@ -49,7 +51,10 @@ def build_mqar_batch(B: int, N: int, M: int, vocab: int = 8192,
     for b in range(B):
         # Sample N unique keys.
         if gen is not None:
-            perm = torch.randperm(key_hi - key_lo, generator=gen, device=device)[:N] + key_lo
+            perm = (
+                torch.randperm(key_hi - key_lo, generator=gen, device=device)[:N]
+                + key_lo
+            )
             vals = torch.randint(val_lo, val_hi, (N,), generator=gen, device=device)
         else:
             perm = torch.randperm(key_hi - key_lo, device=device)[:N] + key_lo
@@ -76,9 +81,15 @@ def build_mqar_batch(B: int, N: int, M: int, vocab: int = 8192,
 
 
 @torch.no_grad()
-def evaluate_mqar(model, N: int, M: int, vocab: int = 8192,
-                  n_examples: int = 256, device: str = "cuda",
-                  batch_size: int = 32) -> dict:
+def evaluate_mqar(
+    model,
+    N: int,
+    M: int,
+    vocab: int = 8192,
+    n_examples: int = 256,
+    device: str = "cuda",
+    batch_size: int = 32,
+) -> dict:
     """Return {'accuracy': float, 'loss': float} for a model on MQAR.
 
     Model must support model(ids, labels=labels) → dict with 'logits' and 'loss'.
@@ -89,8 +100,9 @@ def evaluate_mqar(model, N: int, M: int, vocab: int = 8192,
     losses = []
     for start in range(0, n_examples, batch_size):
         bs = min(batch_size, n_examples - start)
-        ids, labels = build_mqar_batch(bs, N, M, vocab=vocab,
-                                       device=device, seed=42 + start)
+        ids, labels = build_mqar_batch(
+            bs, N, M, vocab=vocab, device=device, seed=42 + start
+        )
         out = model(ids, labels=labels)
         logits = out["logits"]
         # Predict on positions where labels != -100. Note next-token shift:
@@ -105,7 +117,8 @@ def evaluate_mqar(model, N: int, M: int, vocab: int = 8192,
     return {
         "accuracy": correct / max(1, total),
         "loss": sum(losses) / max(1, len(losses)),
-        "n_correct": correct, "n_total": total,
+        "n_correct": correct,
+        "n_total": total,
     }
 
 

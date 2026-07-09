@@ -1,10 +1,14 @@
 """Tests for HSPMNBlockV4 - decoupled QKV + ReMoE router integration."""
+
 import unittest
 import warnings
 import torch
 
 # Patch flex_attention for CPU tests (FlexAttention requires CUDA + compile).
 import hspmn_v4_0
+from hspmn_v4_0 import HSPMNBlockV4
+from utils_v3_0 import HSPMNConfig, seed_everything
+
 _orig_flex = hspmn_v4_0.flex_attention
 _orig_mask = hspmn_v4_0.create_block_mask
 
@@ -18,9 +22,6 @@ def _flex_stub(q, k, v, block_mask=None, enable_gqa=False):
 
 hspmn_v4_0.flex_attention = _flex_stub
 hspmn_v4_0.create_block_mask = lambda *a, **kw: None
-
-from hspmn_v4_0 import HSPMNBlockV4
-from utils_v3_0 import HSPMNConfig, seed_everything
 
 warnings.filterwarnings("ignore")
 
@@ -51,8 +52,9 @@ class TestHSPMNBlockV4(unittest.TestCase):
         self.assertGreater(float(m.q_proj_refl.weight.grad.abs().sum()), 0.0)
         self.assertGreater(float(m.q_proj_ctx.weight.grad.abs().sum()), 0.0)
         # Gradients must not be identical (would indicate a parameter-tying bug).
-        self.assertFalse(torch.allclose(m.q_proj_refl.weight.grad,
-                                        m.q_proj_ctx.weight.grad))
+        self.assertFalse(
+            torch.allclose(m.q_proj_refl.weight.grad, m.q_proj_ctx.weight.grad)
+        )
 
     def test_router_grad_via_gate(self):
         """Gradient must flow through router gate weights (absorption defense)."""

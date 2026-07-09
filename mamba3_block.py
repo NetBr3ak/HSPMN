@@ -27,6 +27,7 @@ Drop-in contract for HSPMN v4 block:
   ignored - the dual-stream block still uses its own decoupled QKV for the
   contextual stream; the reflexive stream gets its own input here.
 """
+
 import math
 from typing import Optional
 
@@ -36,13 +37,13 @@ import torch.nn.functional as F
 
 
 def _mamba3_siso_recurrence(
-    x: torch.Tensor,        # [B, S, H, D_head]
-    delta: torch.Tensor,    # [B, S, H]
-    a_re: torch.Tensor,     # [H, N_state]   negative real part (decay)
-    a_im: torch.Tensor,     # [H, N_state]   imaginary part (rotation)
-    B_proj: torch.Tensor,   # [B, S, H, N_state]
-    C_proj: torch.Tensor,   # [B, S, H, N_state]
-    D_skip: torch.Tensor,   # [H, D_head]
+    x: torch.Tensor,  # [B, S, H, D_head]
+    delta: torch.Tensor,  # [B, S, H]
+    a_re: torch.Tensor,  # [H, N_state]   negative real part (decay)
+    a_im: torch.Tensor,  # [H, N_state]   imaginary part (rotation)
+    B_proj: torch.Tensor,  # [B, S, H, N_state]
+    C_proj: torch.Tensor,  # [B, S, H, N_state]
+    D_skip: torch.Tensor,  # [H, D_head]
 ) -> torch.Tensor:
     """Reference SISO recurrence with trapezoidal discretization.
 
@@ -73,31 +74,33 @@ def _mamba3_siso_recurrence(
     C_f = C_proj.float()
 
     for t in range(S):
-        d_t = delta_f[:, t]                           # [B, H]
+        d_t = delta_f[:, t]  # [B, H]
         # Discretized eigenvalue contributions per head/state.
         # Δ_t · a_re ∈ [B, H, N_state]
         d_a_re = d_t.unsqueeze(-1) * a_re_neg.unsqueeze(0)
         d_a_im = d_t.unsqueeze(-1) * a_im_f.unsqueeze(0)
-        amp = torch.exp(d_a_re)                       # [B, H, N_state]
+        amp = torch.exp(d_a_re)  # [B, H, N_state]
         co = torch.cos(d_a_im)
         si = torch.sin(d_a_im)
-        Abar_re = amp * co                             # [B, H, N_state]
+        Abar_re = amp * co  # [B, H, N_state]
         Abar_im = amp * si
         # Trapezoidal B̄ = (Ā - I) / A ·  in real form, complex divide.
         # |A|^2 = a_re^2 + a_im^2; (Ā - I)/A = ((Abar_re-1)+iAbar_im) / (a_re+ia_im)
-        a_norm2 = (a_re_neg ** 2 + a_im_f ** 2).clamp(min=1e-6)  # [H, N_state]
-        Bbar_re = ((Abar_re - 1.0) * a_re_neg.unsqueeze(0)
-                   + Abar_im * a_im_f.unsqueeze(0)) / a_norm2.unsqueeze(0)
-        Bbar_im = (Abar_im * a_re_neg.unsqueeze(0)
-                   - (Abar_re - 1.0) * a_im_f.unsqueeze(0)) / a_norm2.unsqueeze(0)
+        a_norm2 = (a_re_neg**2 + a_im_f**2).clamp(min=1e-6)  # [H, N_state]
+        Bbar_re = (
+            (Abar_re - 1.0) * a_re_neg.unsqueeze(0) + Abar_im * a_im_f.unsqueeze(0)
+        ) / a_norm2.unsqueeze(0)
+        Bbar_im = (
+            Abar_im * a_re_neg.unsqueeze(0) - (Abar_re - 1.0) * a_im_f.unsqueeze(0)
+        ) / a_norm2.unsqueeze(0)
 
         # Apply input projection B per (B, H, N_state).
-        b_t = B_f[:, t]                                # [B, H, N_state]
-        x_t = x[:, t].float()                          # [B, H, D_head]
+        b_t = B_f[:, t]  # [B, H, N_state]
+        x_t = x[:, t].float()  # [B, H, D_head]
 
         # state = Abar · state + Bbar · b_t · x_t
         # Broadcast: Abar_re [B, H, N_state, 1] over D_head.
-        s_re_old = s[..., 0]                           # [B, H, N_state, D_head]
+        s_re_old = s[..., 0]  # [B, H, N_state, D_head]
         s_im_old = s[..., 1]
         Abar_re_b = Abar_re.unsqueeze(-1)
         Abar_im_b = Abar_im.unsqueeze(-1)
@@ -105,15 +108,15 @@ def _mamba3_siso_recurrence(
         s_im_new = Abar_im_b * s_re_old + Abar_re_b * s_im_old
 
         # Input drive: (Bbar_re + i Bbar_im) · b_t · x_t (real input).
-        bx = b_t.unsqueeze(-1) * x_t.unsqueeze(2)      # [B, H, N_state, D_head]
+        bx = b_t.unsqueeze(-1) * x_t.unsqueeze(2)  # [B, H, N_state, D_head]
         s_re_new = s_re_new + Bbar_re.unsqueeze(-1) * bx
         s_im_new = s_im_new + Bbar_im.unsqueeze(-1) * bx
         s = torch.stack([s_re_new, s_im_new], dim=-1)
 
         # Output: y = C · s_re + D · x  (project complex state to real via real part).
-        c_t = C_f[:, t]                                # [B, H, N_state]
+        c_t = C_f[:, t]  # [B, H, N_state]
         y = (c_t.unsqueeze(-1) * s_re_new).sum(dim=2)  # [B, H, D_head]
-        y = y + D_skip.unsqueeze(0) * x_t              # skip connection
+        y = y + D_skip.unsqueeze(0) * x_t  # skip connection
         out[:, t] = y.to(out.dtype)
 
     return out
@@ -129,9 +132,16 @@ class Mamba3SISOReflexive(nn.Module):
     decoupled-QKV defense still applies - Mamba-3 head sees its own projection.
     """
 
-    def __init__(self, dim: int, num_heads: int, num_kv_heads: int, head_dim: int,
-                 mlp_ratio: int = 4, n_state: int = 16,
-                 use_fla: Optional[bool] = None):
+    def __init__(
+        self,
+        dim: int,
+        num_heads: int,
+        num_kv_heads: int,
+        head_dim: int,
+        mlp_ratio: int = 4,
+        n_state: int = 16,
+        use_fla: Optional[bool] = None,
+    ):
         super().__init__()
         self.dim = dim
         self.num_heads = num_heads
@@ -141,16 +151,20 @@ class Mamba3SISOReflexive(nn.Module):
         # Attempt FLA Mamba-3 import (lands with FLA 0.5.3+).
         try:
             from fla.ops.mamba3 import chunk_mamba3_siso  # noqa: F401
+
             self.has_fla_mamba3 = True
         except ImportError:
             self.has_fla_mamba3 = False
-        self.use_fla = (self.has_fla_mamba3 if use_fla is None
-                        else (use_fla and self.has_fla_mamba3))
+        self.use_fla = (
+            self.has_fla_mamba3
+            if use_fla is None
+            else (use_fla and self.has_fla_mamba3)
+        )
 
         # Per-head learned eigenvalues (re, im).
         self.a_re = nn.Parameter(torch.zeros(num_heads, n_state))
         self.a_im = nn.Parameter(torch.zeros(num_heads, n_state))
-        nn.init.uniform_(self.a_re, 0.5, 2.0)   # softplus → positive decay
+        nn.init.uniform_(self.a_re, 0.5, 2.0)  # softplus → positive decay
         nn.init.uniform_(self.a_im, -math.pi / 2, math.pi / 2)
 
         # Per-token Δ, B, C projections from input.
@@ -170,10 +184,18 @@ class Mamba3SISOReflexive(nn.Module):
         self.gate_proj = nn.Linear(dim, hidden, bias=False)
         self.up_proj = nn.Linear(dim, hidden, bias=False)
         self.down_proj = nn.Linear(hidden, dim, bias=False)
-        for w in [self.B_proj, self.C_proj, self.gate_proj, self.up_proj, self.down_proj]:
+        for w in [
+            self.B_proj,
+            self.C_proj,
+            self.gate_proj,
+            self.up_proj,
+            self.down_proj,
+        ]:
             nn.init.xavier_uniform_(w.weight, gain=0.02)
 
-    def forward(self, q_raw: torch.Tensor, k_raw: torch.Tensor, v_raw: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, q_raw: torch.Tensor, k_raw: torch.Tensor, v_raw: torch.Tensor
+    ) -> torch.Tensor:
         # k_raw unused - Mamba is recurrent, not attentional.
         # q_raw is the full-dim projection (W_Q^refl x_norm) - used as the SSM
         #   input "x" and as input for Δ/B/C projections.
@@ -186,18 +208,31 @@ class Mamba3SISOReflexive(nn.Module):
         x = q_raw.view(B, S, H, D)
 
         # Δ/B/C projected from the full-dim residual (q_raw == W_Q^refl x_norm).
-        delta = F.softplus(self.delta_proj(q_raw))                    # [B, S, H]
+        delta = F.softplus(self.delta_proj(q_raw))  # [B, S, H]
         B_proj = self.B_proj(q_raw).view(B, S, H, self.n_state)
         C_proj = self.C_proj(q_raw).view(B, S, H, self.n_state)
 
         if self.use_fla and x.is_cuda:
             from fla.ops.mamba3 import chunk_mamba3_siso
+
             attn_flat = chunk_mamba3_siso(
-                x, delta, self.a_re, self.a_im, B_proj, C_proj, self.D_skip,
+                x,
+                delta,
+                self.a_re,
+                self.a_im,
+                B_proj,
+                C_proj,
+                self.D_skip,
             ).reshape(B, S, H * D)
         else:
             attn = _mamba3_siso_recurrence(
-                x, delta, self.a_re, self.a_im, B_proj, C_proj, self.D_skip,
+                x,
+                delta,
+                self.a_re,
+                self.a_im,
+                B_proj,
+                C_proj,
+                self.D_skip,
             )
             attn_flat = attn.reshape(B, S, H * D)
 

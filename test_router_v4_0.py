@@ -8,6 +8,7 @@ Verifies:
 5. Z-loss is finite and proportional to logit magnitudes.
 6. Static-shape selection: indices.shape is independent of input data.
 """
+
 import unittest
 import torch
 from router_v4_0 import ReMoERouter
@@ -67,12 +68,16 @@ class TestReMoERouter(unittest.TestCase):
         out = router(x)
         last_w = set(range(64 - W, 64))
         chosen = set(out.kv_indices[0].tolist())
-        self.assertTrue(last_w.issubset(chosen),
-                        f"Local window not fully covered: missing {last_w - chosen}")
+        self.assertTrue(
+            last_w.issubset(chosen),
+            f"Local window not fully covered: missing {last_w - chosen}",
+        )
 
     def test_alf_lb_bias_moves_toward_target(self):
         target = 0.5
-        router = _train(ReMoERouter(self.dim, target_sparsity=target, bias_update_rate=0.05))
+        router = _train(
+            ReMoERouter(self.dim, target_sparsity=target, bias_update_rate=0.05)
+        )
         with torch.no_grad():
             router.gate_proj.bias.fill_(-5.0)
         x = torch.randn(self.B, self.S, self.dim)
@@ -81,13 +86,19 @@ class TestReMoERouter(unittest.TestCase):
         for _ in range(20):
             _ = router(x)
         bias_after = float(router.route_bias)
-        self.assertGreater(bias_after, bias_before,
-                           f"ALF-LB bias did not move up: {bias_before} -> {bias_after}")
+        self.assertGreater(
+            bias_after,
+            bias_before,
+            f"ALF-LB bias did not move up: {bias_before} -> {bias_after}",
+        )
 
     def test_l1_coef_shrinks_when_too_sparse(self):
         target = 0.5
-        router = _train(ReMoERouter(self.dim, target_sparsity=target,
-                                    l1_coef_init=1.0, l1_adapt_rate=0.1))
+        router = _train(
+            ReMoERouter(
+                self.dim, target_sparsity=target, l1_coef_init=1.0, l1_adapt_rate=0.1
+            )
+        )
         with torch.no_grad():
             router.gate_proj.bias.fill_(-5.0)
         x = torch.randn(self.B, self.S, self.dim)
@@ -96,8 +107,11 @@ class TestReMoERouter(unittest.TestCase):
         for _ in range(10):
             _ = router(x)
         l1_after = float(router.l1_coef)
-        self.assertLess(l1_after, l1_before,
-                        f"L1 coef did not shrink under low activity: {l1_before} -> {l1_after}")
+        self.assertLess(
+            l1_after,
+            l1_before,
+            f"L1 coef did not shrink under low activity: {l1_before} -> {l1_after}",
+        )
 
     def test_no_updates_in_inference(self):
         router = _infer(ReMoERouter(self.dim, target_sparsity=0.5))
@@ -110,8 +124,9 @@ class TestReMoERouter(unittest.TestCase):
         self.assertTrue(torch.equal(l1_before, router.l1_coef))
 
     def test_z_loss_grows_with_logit_magnitude(self):
-        router = ReMoERouter(self.dim, target_sparsity=0.5,
-                             l1_coef_init=0.0, z_loss_coef=1.0)
+        router = ReMoERouter(
+            self.dim, target_sparsity=0.5, l1_coef_init=0.0, z_loss_coef=1.0
+        )
         with torch.no_grad():
             router.gate_proj.weight.mul_(50.0)
         x = torch.randn(self.B, self.S, self.dim)

@@ -10,6 +10,7 @@ Covers:
   - FLA-vs-reference agreement at small scale (atol 1e-2 in bf16; lenient
     because reference uses scalar eta and FLA path uses per-channel b = a*eta)
 """
+
 import torch
 
 from rwkv7_block import RWKV7Reflexive, HAS_FLA_RWKV7
@@ -18,10 +19,12 @@ from rwkv7_block import RWKV7Reflexive, HAS_FLA_RWKV7
 CUDA_OK = torch.cuda.is_available() and HAS_FLA_RWKV7
 
 
-def _make_block(*, use_fla, dtype=torch.float32, device="cpu",
-                B=2, S=32, dim=128, H=4, KV=2, D=32):
-    block = RWKV7Reflexive(dim=dim, num_heads=H, num_kv_heads=KV,
-                           head_dim=D, mlp_ratio=2, use_fla=use_fla)
+def _make_block(
+    *, use_fla, dtype=torch.float32, device="cpu", B=2, S=32, dim=128, H=4, KV=2, D=32
+):
+    block = RWKV7Reflexive(
+        dim=dim, num_heads=H, num_kv_heads=KV, head_dim=D, mlp_ratio=2, use_fla=use_fla
+    )
     block = block.to(device=device, dtype=dtype)
     q = torch.randn(B, S, dim, device=device, dtype=dtype)
     k = torch.randn(B, S, KV * D, device=device, dtype=dtype)
@@ -38,8 +41,9 @@ def test_forward_shape():
 
 def test_gradient_flow():
     B, S, dim, H, KV, D = 1, 16, 64, 2, 1, 32
-    block = RWKV7Reflexive(dim=dim, num_heads=H, num_kv_heads=KV,
-                           head_dim=D, mlp_ratio=2, use_fla=False)
+    block = RWKV7Reflexive(
+        dim=dim, num_heads=H, num_kv_heads=KV, head_dim=D, mlp_ratio=2, use_fla=False
+    )
     q = torch.randn(B, S, dim, requires_grad=True)
     k = torch.randn(B, S, KV * D, requires_grad=True)
     v = torch.randn(B, S, KV * D, requires_grad=True)
@@ -54,8 +58,9 @@ def test_gradient_flow():
 
 def test_long_sequence_stability():
     B, S, dim, H, KV, D = 1, 256, 64, 2, 1, 32
-    block = RWKV7Reflexive(dim=dim, num_heads=H, num_kv_heads=KV,
-                           head_dim=D, mlp_ratio=2, use_fla=False)
+    block = RWKV7Reflexive(
+        dim=dim, num_heads=H, num_kv_heads=KV, head_dim=D, mlp_ratio=2, use_fla=False
+    )
     block.train(False)
     q = torch.randn(B, S, dim)
     k = torch.randn(B, S, KV * D)
@@ -71,8 +76,14 @@ def test_drop_in_v4_block():
     from hspmn_v4_0 import HSPMNBlockV4
     from utils_v3_0 import HSPMNConfig
 
-    cfg = HSPMNConfig(dim=64, num_heads=4, num_kv_heads=2,
-                      mlp_ratio=2, max_seq_len=64, sparsity_k=0.25)
+    cfg = HSPMNConfig(
+        dim=64,
+        num_heads=4,
+        num_kv_heads=2,
+        mlp_ratio=2,
+        max_seq_len=64,
+        sparsity_k=0.25,
+    )
     block = HSPMNBlockV4(cfg, num_sink_tokens=4, reflexive="rwkv7", attention="sqsk")
     block.train(False)
     x = torch.randn(1, 16, 64)
@@ -109,8 +120,9 @@ def test_fla_cuda_fp16_finite():
         print("[6] FLA-CUDA fp16 SKIPPED")
         return
     torch.manual_seed(1)
-    block, q, k, v = _make_block(use_fla=True, dtype=torch.float16, device="cuda",
-                                 S=128)
+    block, q, k, v = _make_block(
+        use_fla=True, dtype=torch.float16, device="cuda", S=128
+    )
     block.train(False)
     with torch.no_grad():
         out = block(q, k, v)
@@ -138,7 +150,9 @@ def test_fla_matches_reference():
     block_fla = RWKV7Reflexive(use_fla=True, **cfg).cuda().bfloat16()
     # Copy params (CPU fp64 → CUDA bf16).
     sd_ref = {k: v.clone() for k, v in block_ref.state_dict().items()}
-    block_fla.load_state_dict({k: v.to(torch.bfloat16).cuda() for k, v in sd_ref.items()})
+    block_fla.load_state_dict(
+        {k: v.to(torch.bfloat16).cuda() for k, v in sd_ref.items()}
+    )
 
     q = torch.randn(B, S, dim, dtype=torch.float64)
     k = torch.randn(B, S, KV * D, dtype=torch.float64)
@@ -148,7 +162,11 @@ def test_fla_matches_reference():
     block_fla.train(False)
     with torch.no_grad():
         out_ref = block_ref(q, k, v).float()
-        out_fla = block_fla(q.bfloat16().cuda(), k.bfloat16().cuda(), v.bfloat16().cuda()).float().cpu()
+        out_fla = (
+            block_fla(q.bfloat16().cuda(), k.bfloat16().cuda(), v.bfloat16().cuda())
+            .float()
+            .cpu()
+        )
 
     assert out_ref.shape == out_fla.shape
     assert torch.isfinite(out_ref).all() and torch.isfinite(out_fla).all()

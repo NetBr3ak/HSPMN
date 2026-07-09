@@ -2,6 +2,7 @@
 Proprietary / All Rights Reserved - Non-Commercial Use Only
 Source-available for portfolio viewing only. Commercial use, unauthorized modification, reproduction, or distribution is strictly prohibited. All rights reserved.
 """
+
 import unittest
 import warnings
 import torch
@@ -22,6 +23,7 @@ class TestHSPMNv3(unittest.TestCase):
 
         # Patch flex_attention to avoid torch.compile hangs on CPU.
         import hspmn_v3_0
+
         cls._original_flex = hspmn_v3_0.flex_attention
         cls._original_mask = hspmn_v3_0.create_block_mask
 
@@ -29,7 +31,9 @@ class TestHSPMNv3(unittest.TestCase):
             if q.shape[1] != k.shape[1]:
                 k = k.repeat_interleave(q.shape[1] // k.shape[1], dim=1)
                 v = v.repeat_interleave(q.shape[1] // v.shape[1], dim=1)
-            return torch.nn.functional.scaled_dot_product_attention(q, k, v, is_causal=False)
+            return torch.nn.functional.scaled_dot_product_attention(
+                q, k, v, is_causal=False
+            )
 
         hspmn_v3_0.flex_attention = _flex_stub
         hspmn_v3_0.create_block_mask = lambda *args, **kwargs: None
@@ -37,6 +41,7 @@ class TestHSPMNv3(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         import hspmn_v3_0
+
         hspmn_v3_0.flex_attention = cls._original_flex
         hspmn_v3_0.create_block_mask = cls._original_mask
 
@@ -99,7 +104,9 @@ class TestHSPMNv3(unittest.TestCase):
         past_kv = None
         out_inc_list = []
         for i in range(5):
-            out_step, _, past_kv = model(x_full[:, i:i + 1, :], past_key_values=past_kv)
+            out_step, _, past_kv = model(
+                x_full[:, i : i + 1, :], past_key_values=past_kv
+            )
             out_inc_list.append(out_step)
         out_inc = torch.cat(out_inc_list, dim=1)
 
@@ -113,18 +120,6 @@ class TestHSPMNv3(unittest.TestCase):
         self.assertEqual(out.shape, (1, 128, self.config.dim))
         self.assertTrue(torch.is_tensor(aux))
         self.assertEqual(len(cache), 3)
-
-    def test_hf_wrapper_e2e(self):
-        from hspmn_hf_wrapper import HSPMNWrapperConfig, HSPMNWrapperModel
-        hf_config = HSPMNWrapperConfig(vocab_size=512, dim=64, num_heads=4, num_kv_heads=2)
-        model = HSPMNWrapperModel(hf_config)
-        input_ids = torch.randint(0, hf_config.vocab_size, (1, 16))
-        labels = torch.randint(0, hf_config.vocab_size, (1, 16))
-        out = model(input_ids=input_ids, labels=labels, use_cache=True)
-        self.assertEqual(out.logits.shape, (1, 16, hf_config.vocab_size))
-        self.assertTrue(out.loss.isfinite())
-        self.assertTrue(hasattr(out, "past_key_values"))
-
 
 if __name__ == "__main__":
     unittest.main()

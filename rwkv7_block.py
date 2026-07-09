@@ -25,7 +25,7 @@ Drop-in for HSPMN v4 reflexive stream: forward(q_raw, k_raw, v_raw) → [B, S, d
 We construct k, a, v, q from the q_raw / k_raw / v_raw inputs (decoupled-QKV
 defense preserved - these are W_Q^refl, W_K^refl, W_V^refl already).
 """
-import math
+
 from typing import Optional
 
 import torch
@@ -34,17 +34,18 @@ import torch.nn.functional as F
 
 try:
     from fla.ops.rwkv7 import chunk_rwkv7
+
     HAS_FLA_RWKV7 = True
 except ImportError:
     HAS_FLA_RWKV7 = False
 
 
 def _rwkv7_recurrence(
-    q: torch.Tensor,    # [B, S, H, D]   read query
-    k: torch.Tensor,    # [B, S, H, D]   write key
-    a: torch.Tensor,    # [B, S, H, D]   removal-from-state vector (NEW vs GDN)
-    v: torch.Tensor,    # [B, S, H, D]   value
-    w: torch.Tensor,    # [B, S, H, D]   per-channel decay in (0, 1]
+    q: torch.Tensor,  # [B, S, H, D]   read query
+    k: torch.Tensor,  # [B, S, H, D]   write key
+    a: torch.Tensor,  # [B, S, H, D]   removal-from-state vector (NEW vs GDN)
+    v: torch.Tensor,  # [B, S, H, D]   value
+    w: torch.Tensor,  # [B, S, H, D]   per-channel decay in (0, 1]
     eta: torch.Tensor,  # [B, S, H]      per-head in-context learning rate
 ) -> torch.Tensor:
     """Reference generalized-delta-rule recurrence. Slow O(S); diagnostic only.
@@ -56,22 +57,22 @@ def _rwkv7_recurrence(
     out = torch.empty_like(q, dtype=q.dtype)
 
     for t in range(S):
-        q_t = q[:, t].float()                              # [B, H, D]
+        q_t = q[:, t].float()  # [B, H, D]
         k_t = k[:, t].float()
         a_t = a[:, t].float()
         v_t = v[:, t].float()
         w_t = w[:, t].float()
-        e_t = eta[:, t].float()                            # [B, H]
+        e_t = eta[:, t].float()  # [B, H]
 
         # Per-channel decay: state ⊙ w_t (broadcast over second D axis).
-        state = state * w_t.unsqueeze(-1)                  # [B, H, D, D]
+        state = state * w_t.unsqueeze(-1)  # [B, H, D, D]
 
         # Generalized delta: state -= η · state · (k_t a_t^T)
         # = η · einsum("bhde,bhe,bhf->bhdf", state, k_t, a_t)
         # First state_k = state · k_t  : [B, H, D]
         state_k = torch.einsum("bhde,bhe->bhd", state, k_t)
         # Outer with a_t scaled by η.
-        e_view = e_t.unsqueeze(-1).unsqueeze(-1)           # [B, H, 1, 1]
+        e_view = e_t.unsqueeze(-1).unsqueeze(-1)  # [B, H, 1, 1]
         state = state - e_view * torch.einsum("bhd,bhe->bhde", state_k, a_t)
 
         # Add new write: η · v_t · k_t^T
@@ -91,8 +92,15 @@ class RWKV7Reflexive(nn.Module):
       forward(q_raw, k_raw, v_raw) -> [B, S, dim]
     """
 
-    def __init__(self, dim: int, num_heads: int, num_kv_heads: int, head_dim: int,
-                 mlp_ratio: int = 4, use_fla: Optional[bool] = None):
+    def __init__(
+        self,
+        dim: int,
+        num_heads: int,
+        num_kv_heads: int,
+        head_dim: int,
+        mlp_ratio: int = 4,
+        use_fla: Optional[bool] = None,
+    ):
         super().__init__()
         self.dim = dim
         self.num_heads = num_heads
@@ -112,7 +120,7 @@ class RWKV7Reflexive(nn.Module):
         # → decay ≈ 0.95 (slow forgetting, matches FLA RWKV-7 default).
         # η near 0.5 (moderate write rate), a small (start near identity).
         nn.init.constant_(self.w_proj.bias, -3.0)
-        nn.init.constant_(self.eta_proj.bias, 0.0)          # sigmoid(0) = 0.5
+        nn.init.constant_(self.eta_proj.bias, 0.0)  # sigmoid(0) = 0.5
         nn.init.xavier_uniform_(self.w_proj.weight, gain=0.02)
         nn.init.xavier_uniform_(self.eta_proj.weight, gain=0.02)
         nn.init.xavier_uniform_(self.a_proj.weight, gain=0.02)
@@ -126,28 +134,34 @@ class RWKV7Reflexive(nn.Module):
         for p in [self.gate_proj, self.up_proj, self.down_proj]:
             nn.init.xavier_uniform_(p.weight, gain=0.02)
 
-    def forward(self, q_raw: torch.Tensor, k_raw: torch.Tensor, v_raw: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, q_raw: torch.Tensor, k_raw: torch.Tensor, v_raw: torch.Tensor
+    ) -> torch.Tensor:
         B, S, _ = q_raw.shape
         H, D = self.num_heads, self.head_dim
 
         # Reshape Q to [B, S, H, D]; expand GQA K/V to full head count.
         q = q_raw.view(B, S, H, D)
-        k = k_raw.view(B, S, self.num_kv_heads, D).repeat_interleave(self.kv_groups, dim=2)
-        v = v_raw.view(B, S, self.num_kv_heads, D).repeat_interleave(self.kv_groups, dim=2)
+        k = k_raw.view(B, S, self.num_kv_heads, D).repeat_interleave(
+            self.kv_groups, dim=2
+        )
+        v = v_raw.view(B, S, self.num_kv_heads, D).repeat_interleave(
+            self.kv_groups, dim=2
+        )
 
         # Project gates + removal vector from full-dim residual.
         # FLA convention: w = log decay ∈ (-∞, 0], realized via -softplus.
         w_log = -F.softplus(self.w_proj(q_raw)).view(B, S, H, D)
-        eta = torch.sigmoid(self.eta_proj(q_raw))                      # [B, S, H]
+        eta = torch.sigmoid(self.eta_proj(q_raw))  # [B, S, H]
         a_dir = self.a_proj(q_raw).view(B, S, H, D)
-        a_dir = F.normalize(a_dir, dim=-1)                             # unit removal direction
+        a_dir = F.normalize(a_dir, dim=-1)  # unit removal direction
 
         if self.use_fla and q.is_cuda:
             # FLA chunk_rwkv7 expects DPLR delta-rule form:
             #   r=q, w=log_decay, k, v, a (rank-1 left), b (rank-1 right).
             # Convention from fla.layers.rwkv7: a = -kk_dir, b = kk_dir * iclr.
             # eta (per-head) broadcasts to per-channel via unsqueeze(-1).
-            eta_bcast = eta.unsqueeze(-1)                              # [B, S, H, 1]
+            eta_bcast = eta.unsqueeze(-1)  # [B, S, H, 1]
             a_arg = -a_dir
             b_arg = a_dir * eta_bcast
             # FLA chunk kernel rejects fp32 inputs on some platforms; cast bf16.
@@ -162,7 +176,7 @@ class RWKV7Reflexive(nn.Module):
             attn = attn.to(q.dtype)
         else:
             # Reference path: scalar-eta, sigmoid-decay, original recurrence form.
-            w_decay = torch.exp(w_log)                                 # ∈ (0, 1]
+            w_decay = torch.exp(w_log)  # ∈ (0, 1]
             attn = _rwkv7_recurrence(q, k, a_dir, v, w_decay, eta)
         attn_flat = attn.reshape(B, S, H * D)
 

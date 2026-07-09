@@ -11,6 +11,7 @@ Usage:
         --ckpt checkpoints_v6/.../hymba-with-nsa-gated_final.pt \
         --data_dir data/mix_pi25 --out_md results/v6_split_gated_pi25_s42.md
 """
+
 import argparse
 import math
 
@@ -41,11 +42,20 @@ def main():
     seed_everything(args.seed)
     device = get_device()
     dtype = torch.bfloat16 if device.type == "cuda" else torch.float32
-    cfg = TrainConfig(variant=args.variant, n_layers=args.n_layers,
-                      dim=args.dim, num_heads=args.num_heads,
-                      num_kv_heads=args.num_kv_heads, seq_len=args.seq_len,
-                      batch_size=args.batch, grad_accum=1, steps=1, lr=1e-3,
-                      warmup_steps=1, nsa_window=256)
+    cfg = TrainConfig(
+        variant=args.variant,
+        n_layers=args.n_layers,
+        dim=args.dim,
+        num_heads=args.num_heads,
+        num_kv_heads=args.num_kv_heads,
+        seq_len=args.seq_len,
+        batch_size=args.batch,
+        grad_accum=1,
+        steps=1,
+        lr=1e-3,
+        warmup_steps=1,
+        nsa_window=256,
+    )
     valid = np.load(f"{args.data_dir}/valid_tokens.npy", mmap_mode="r")
     mask = np.load(f"{args.data_dir}/valid_answer_mask.npy", mmap_mode="r")
     model = build_model(cfg, 50257, device, dtype)
@@ -55,21 +65,23 @@ def main():
     S = args.seq_len
     rng = np.random.default_rng(args.seed)
     n_win = (args.n_windows // args.batch) * args.batch  # divisible groups
-    starts = rng.integers(0, len(valid) - S - 1,
-                          size=(n_win,)).reshape(-1, args.batch)
+    starts = rng.integers(0, len(valid) - S - 1, size=(n_win,)).reshape(-1, args.batch)
     ce_ans, ce_bg, n_ans, n_bg = 0.0, 0.0, 0, 0
     with torch.no_grad():
         for group in starts:
-            x = np.stack([valid[a:a + S] for a in group]).astype(np.int64)
-            m = np.stack([mask[a + 1:a + S] for a in group]).astype(bool)
+            x = np.stack([valid[a : a + S] for a in group]).astype(np.int64)
+            m = np.stack([mask[a + 1 : a + S] for a in group]).astype(bool)
             x_t = torch.from_numpy(x).to(device)
             logits = model(x_t)["logits"][:, :-1, :]
             tgt = x_t[:, 1:]
-            ce = F.cross_entropy(logits.reshape(-1, logits.size(-1)),
-                                 tgt.reshape(-1), reduction="none")
+            ce = F.cross_entropy(
+                logits.reshape(-1, logits.size(-1)), tgt.reshape(-1), reduction="none"
+            )
             ce = ce.view(x_t.size(0), -1).float().cpu().numpy()
-            ce_ans += float(ce[m].sum()); n_ans += int(m.sum())
-            ce_bg += float(ce[~m].sum()); n_bg += int((~m).sum())
+            ce_ans += float(ce[m].sum())
+            n_ans += int(m.sum())
+            ce_bg += float(ce[~m].sum())
+            n_bg += int((~m).sum())
 
     mean_ans = ce_ans / max(1, n_ans)
     mean_bg = ce_bg / max(1, n_bg)

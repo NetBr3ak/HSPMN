@@ -12,9 +12,9 @@ continue-on-fail). GPU is free; launch immediately (no --wait-pid).
     nohup python3 run_v5_queue2.py > results/v5_queue2.out 2>&1 &
     python3 run_v5_queue2.py --list
 """
+
 import argparse
 import subprocess
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -22,21 +22,31 @@ ROOT = Path("/opt/docker/LLM/HSPMN")
 LOG = ROOT / "results" / "v5_queue2.log"
 P4A = "checkpoints_p4_350m/hymba-with-nsa_p4_final.pt"
 
-BASE = ("--n_layers 24 --dim 896 --num_heads 14 --num_kv_heads 2 --seq_len 1024 "
-        "--batch_size 8 --grad_accum 8 --steps 15000 --warmup_steps 500 --lr 1e-3 "
-        "--kill_clock_h 10.0")
-MIARGS = ("--n_batches 4 --batch 2 --seq_len 512 --n_layers 24 --dim 896 "
-          "--num_heads 14 --num_kv_heads 2")
+BASE = (
+    "--n_layers 24 --dim 896 --num_heads 14 --num_kv_heads 2 --seq_len 1024 "
+    "--batch_size 8 --grad_accum 8 --steps 15000 --warmup_steps 500 --lr 1e-3 "
+    "--kill_clock_h 10.0"
+)
+MIARGS = (
+    "--n_batches 4 --batch 2 --seq_len 512 --n_layers 24 --dim 896 "
+    "--num_heads 14 --num_kv_heads 2"
+)
 
 
 def train(variant, seed, save):
-    return (f"python3 train_p4_350m.py --variant {variant} {BASE} --seed {seed} "
-            f"--save_dir {save}", f"{save}/{variant}_p4_final.pt")
+    return (
+        f"python3 train_p4_350m.py --variant {variant} {BASE} --seed {seed} "
+        f"--save_dir {save}",
+        f"{save}/{variant}_p4_final.pt",
+    )
 
 
 def mi(variant, ckpt, out):
-    return (f"python3 measure_gate_channel_mi.py --variant {variant} --ckpt {ckpt} "
-            f"--label_ckpt {P4A} {MIARGS} --out_md {out}", out)
+    return (
+        f"python3 measure_gate_channel_mi.py --variant {variant} --ckpt {ckpt} "
+        f"--label_ckpt {P4A} {MIARGS} --out_md {out}",
+        out,
+    )
 
 
 def job(name, cmd, art, crit=False):
@@ -56,11 +66,17 @@ _jobs.append(job("gated_350m_s2026", _c, _a, True))
 _c, _a = train("hymba-with-nsa-randgate", 2026, "checkpoints_p4_randgate_s2026")
 _jobs.append(job("randgate_350m_s2026", _c, _a, True))
 # Non-circular MI at scale for each fresh model (cheap; label = gate-free p4a base).
-_c, _a = mi("hymba-with-nsa-randgate", "checkpoints_p4_randgate_s42/hymba-with-nsa-randgate_p4_final.pt",
-            "results/gate_channel_mi_350m_randgate.md")
+_c, _a = mi(
+    "hymba-with-nsa-randgate",
+    "checkpoints_p4_randgate_s42/hymba-with-nsa-randgate_p4_final.pt",
+    "results/gate_channel_mi_350m_randgate.md",
+)
 _jobs.append(job("mi_randgate_350m", _c, _a))
-_c, _a = mi("hymba-with-nsa-gated", "checkpoints_p4_gated_s1337/hymba-with-nsa-gated_p4_final.pt",
-            "results/gate_channel_mi_350m_gated_s1337.md")
+_c, _a = mi(
+    "hymba-with-nsa-gated",
+    "checkpoints_p4_gated_s1337/hymba-with-nsa-gated_p4_final.pt",
+    "results/gate_channel_mi_350m_gated_s1337.md",
+)
 _jobs.append(job("mi_gated_350m_s1337", _c, _a))
 
 QUEUE = _jobs
@@ -88,10 +104,13 @@ def run_job(j):
     log(f"START {j['name']}: {j['cmd']}")
     jlog = ROOT / "results" / f"v5_queue2_{j['name']}.log"
     with open(jlog, "w") as f:
-        rc = subprocess.call(j["cmd"], shell=True, cwd=ROOT, stdout=f,
-                             stderr=subprocess.STDOUT)
+        rc = subprocess.call(
+            j["cmd"], shell=True, cwd=ROOT, stdout=f, stderr=subprocess.STDOUT
+        )
     ok = done(j)
-    log(f"END   {j['name']}: rc={rc} artifact={'OK' if ok else 'MISSING'}; log={jlog.name}")
+    log(
+        f"END   {j['name']}: rc={rc} artifact={'OK' if ok else 'MISSING'}; log={jlog.name}"
+    )
     return ok
 
 
@@ -102,8 +121,10 @@ def main():
     args = ap.parse_args()
     if args.list:
         for j in QUEUE:
-            print(f"  {'DONE' if done(j) else 'pending':8s} {j['name']}"
-                  f"{' [critical]' if j['critical'] else ''}")
+            print(
+                f"  {'DONE' if done(j) else 'pending':8s} {j['name']}"
+                f"{' [critical]' if j['critical'] else ''}"
+            )
         print(f"\n{sum(1 for j in QUEUE if not done(j))} pending of {len(QUEUE)}")
         return
     jobs = QUEUE if not args.only else [j for j in QUEUE if j["name"] in args.only]

@@ -1,4 +1,5 @@
 """Unit tests for the Phase-1 synthetic state-tracking benchmarks."""
+
 import torch
 
 from synthetic_mqar import build_mqar_batch
@@ -58,8 +59,9 @@ def test_parity_labels():
             lab = int(labels[b, t].item())
             if tok == 2:
                 # Cue: label should match running_parity.
-                assert lab == running_parity, \
+                assert lab == running_parity, (
                     f"row {b} pos {t}: label={lab} but running={running_parity}"
+                )
             else:
                 if lab != -100:
                     assert False, f"non-cue position has label {lab}"

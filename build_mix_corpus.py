@@ -32,6 +32,7 @@ Outputs, per pi in --pis:
 Usage:
     python3 build_mix_corpus.py --pis 0.0 0.1 0.25 0.5
 """
+
 import argparse
 import json
 import os
@@ -42,15 +43,14 @@ DATA_DIR = "/opt/docker/LLM/HSPMN/data"
 SEG_LEN = 256
 N_PAIRS = 48
 N_QUERIES = 32
-ALPHABET = 512          # ids per role bank (keys | values)
-ID_LOW, ID_HIGH = 1000, 45000   # safe interior of the GPT-2 vocab
-SEP, QMARK, AMARK = 50256, 198, 25    # <|endoftext|>, "\n", ":"
+ALPHABET = 512  # ids per role bank (keys | values)
+ID_LOW, ID_HIGH = 1000, 45000  # safe interior of the GPT-2 vocab
+SEP, QMARK, AMARK = 50256, 198, 25  # <|endoftext|>, "\n", ":"
 
 
 def make_banks(seed: int):
     rng = np.random.default_rng(seed)
-    ids = rng.choice(np.arange(ID_LOW, ID_HIGH), size=2 * ALPHABET,
-                     replace=False)
+    ids = rng.choice(np.arange(ID_LOW, ID_HIGH), size=2 * ALPHABET, replace=False)
     return ids[:ALPHABET], ids[ALPHABET:]
 
 
@@ -70,8 +70,9 @@ def recall_segment(rng, key_bank, val_bank):
     pad = SEG_LEN - len(toks)
     toks.extend([SEP] * pad)
     mask.extend([0] * pad)
-    return np.array(toks[:SEG_LEN], dtype=np.uint16), \
-        np.array(mask[:SEG_LEN], dtype=np.uint8)
+    return np.array(toks[:SEG_LEN], dtype=np.uint16), np.array(
+        mask[:SEG_LEN], dtype=np.uint8
+    )
 
 
 def build_stream(src, n_tokens, pi, seed, key_bank, val_bank):
@@ -85,12 +86,12 @@ def build_stream(src, n_tokens, pi, seed, key_bank, val_bank):
         take = min(SEG_LEN, n_tokens - pos)
         if rng.random() < pi:
             seg, m = recall_segment(rng, key_bank, val_bank)
-            out[pos:pos + take] = seg[:take]
-            mask[pos:pos + take] = m[:take]
+            out[pos : pos + take] = seg[:take]
+            mask[pos : pos + take] = m[:take]
         else:
             if cursor + take > len(src):
                 cursor = 0
-            out[pos:pos + take] = src[cursor:cursor + take]
+            out[pos : pos + take] = src[cursor : cursor + take]
             cursor += take
         pos += take
     return out, mask
@@ -98,8 +99,7 @@ def build_stream(src, n_tokens, pi, seed, key_bank, val_bank):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--pis", type=float, nargs="+",
-                    default=[0.0, 0.1, 0.25, 0.5])
+    ap.add_argument("--pis", type=float, nargs="+", default=[0.0, 0.1, 0.25, 0.5])
     ap.add_argument("--train_tokens", type=int, default=60_000_000)
     ap.add_argument("--valid_tokens", type=int, default=2_000_000)
     ap.add_argument("--seed", type=int, default=7)
@@ -117,20 +117,32 @@ def main():
             print(f"skip pi={pi}: {meta_p} exists")
             continue
         os.makedirs(out_dir, exist_ok=True)
-        tr, _ = build_stream(train_src, args.train_tokens, pi,
-                             args.seed + 1, key_bank, val_bank)
-        va, va_mask = build_stream(valid_src, args.valid_tokens, pi,
-                                   args.seed + 2, key_bank, val_bank)
+        tr, _ = build_stream(
+            train_src, args.train_tokens, pi, args.seed + 1, key_bank, val_bank
+        )
+        va, va_mask = build_stream(
+            valid_src, args.valid_tokens, pi, args.seed + 2, key_bank, val_bank
+        )
         np.save(f"{out_dir}/train_tokens.npy", tr)
         np.save(f"{out_dir}/valid_tokens.npy", va)
         np.save(f"{out_dir}/valid_answer_mask.npy", va_mask)
         realized = float(va_mask.mean())
         with open(meta_p, "w") as f:
-            json.dump({"pi": pi, "seg_len": SEG_LEN, "n_pairs": N_PAIRS,
-                       "n_queries": N_QUERIES, "alphabet": ALPHABET,
-                       "train_tokens": len(tr), "valid_tokens": len(va),
-                       "valid_answer_frac": realized,
-                       "seed": args.seed}, f, indent=2)
+            json.dump(
+                {
+                    "pi": pi,
+                    "seg_len": SEG_LEN,
+                    "n_pairs": N_PAIRS,
+                    "n_queries": N_QUERIES,
+                    "alphabet": ALPHABET,
+                    "train_tokens": len(tr),
+                    "valid_tokens": len(va),
+                    "valid_answer_frac": realized,
+                    "seed": args.seed,
+                },
+                f,
+                indent=2,
+            )
         print(f"built pi={pi} -> {out_dir}  answer_frac={realized:.4f}")
 
 

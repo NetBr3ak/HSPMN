@@ -64,7 +64,7 @@ Routing Absorption in Hybrid Mamba-Attention Language Models*
 ## Quick start
 
 ```bash
-python3 -m pytest test_*.py -q          # 61 tests, ~5 s - green before anything
+python3 -m pytest test_*.py -q          # 56 tests, ~5 s - green before anything
 python3 train_v4.py --variant hymba-with-nsa --lr 1e-3 --seed 42   # a 140M run
 ```
 

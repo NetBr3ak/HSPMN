@@ -1,4 +1,5 @@
 """Tests for Gated DeltaNet reflexive stream."""
+
 import unittest
 import torch
 from gated_deltanet import GatedDeltaNetReflexive, _chunked_gated_delta
@@ -53,7 +54,9 @@ class TestGatedDeltaNet(unittest.TestCase):
         self.assertTrue(torch.allclose(b, c, atol=1e-4))
 
     def test_reflexive_module_shape(self):
-        m = GatedDeltaNetReflexive(self.dim, self.num_heads, self.num_kv_heads, self.head_dim, use_fla=False)
+        m = GatedDeltaNetReflexive(
+            self.dim, self.num_heads, self.num_kv_heads, self.head_dim, use_fla=False
+        )
         kv_dim = self.num_kv_heads * self.head_dim
         q = torch.randn(2, 32, self.dim)
         k = torch.randn(2, 32, kv_dim)
@@ -63,7 +66,9 @@ class TestGatedDeltaNet(unittest.TestCase):
         self.assertTrue(torch.isfinite(out).all())
 
     def test_reflexive_module_gradients(self):
-        m = GatedDeltaNetReflexive(self.dim, self.num_heads, self.num_kv_heads, self.head_dim, use_fla=False).train()
+        m = GatedDeltaNetReflexive(
+            self.dim, self.num_heads, self.num_kv_heads, self.head_dim, use_fla=False
+        ).train()
         kv_dim = self.num_kv_heads * self.head_dim
         q = torch.randn(1, 16, self.dim, requires_grad=True)
         k = torch.randn(1, 16, kv_dim, requires_grad=True)
@@ -78,15 +83,22 @@ class TestGatedDeltaNet(unittest.TestCase):
 
     def test_no_nan_on_long_sequence(self):
         """Stress: 256-token recurrence should not blow up."""
-        m = GatedDeltaNetReflexive(self.dim, self.num_heads, self.num_kv_heads, self.head_dim,
-                                   chunk_size=32, use_fla=False).train(False)
+        m = GatedDeltaNetReflexive(
+            self.dim,
+            self.num_heads,
+            self.num_kv_heads,
+            self.head_dim,
+            chunk_size=32,
+            use_fla=False,
+        ).train(False)
         kv_dim = self.num_kv_heads * self.head_dim
         q = torch.randn(1, 256, self.dim) * 2.0
         k = torch.randn(1, 256, kv_dim) * 2.0
         v = torch.randn(1, 256, kv_dim) * 2.0
         out = m(q, k, v)
-        self.assertTrue(torch.isfinite(out).all(),
-                        "Gated DeltaNet diverged on long sequence")
+        self.assertTrue(
+            torch.isfinite(out).all(), "Gated DeltaNet diverged on long sequence"
+        )
 
 
 if __name__ == "__main__":

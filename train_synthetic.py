@@ -14,71 +14,114 @@ Usage:
     python3 train_synthetic.py --task dyck2 --variant v4-rwkv7-nsa
     python3 train_synthetic.py --all
 """
+
 import argparse
 import json
-import math
 import os
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 
 from synthetic_mqar import build_mqar_batch, evaluate_mqar
 from synthetic_dyck import build_dyck2_batch, evaluate_dyck2, VOCAB_DYCK2
 from synthetic_parity import build_parity_batch, evaluate_parity, VOCAB_PARITY
 
 
-VARIANTS = ["dense", "v4-gdn-nsa", "v4-mamba3-nsa", "v4-rwkv7-nsa",
-            "hymba", "hymba-with-nsa", "hymba-with-nsa-gated",
-            "hymba-with-nsa-randgate", "hymba-with-nsa-pcgate",
-            "hymba-with-asa"]
+VARIANTS = [
+    "dense",
+    "v4-gdn-nsa",
+    "v4-mamba3-nsa",
+    "v4-rwkv7-nsa",
+    "hymba",
+    "hymba-with-nsa",
+    "hymba-with-nsa-gated",
+    "hymba-with-nsa-randgate",
+    "hymba-with-nsa-pcgate",
+    "hymba-with-asa",
+]
 
 TASK_CFG = {
-    "mqar":   {"vocab": 8192, "length": 256, "n_kv": 32, "n_query": 16},
-    "dyck2":  {"vocab": VOCAB_DYCK2, "length": 256, "max_depth": 8},
+    "mqar": {"vocab": 8192, "length": 256, "n_kv": 32, "n_query": 16},
+    "dyck2": {"vocab": VOCAB_DYCK2, "length": 256, "max_depth": 8},
     "parity": {"vocab": VOCAB_PARITY, "length": 256, "p_query": 0.1},
 }
 
 
-def build_lm(variant: str, vocab: int, dim: int = 128, n_layers: int = 4,
-             num_heads: int = 4, num_kv_heads: int = 2, max_seq_len: int = 1024):
+def build_lm(
+    variant: str,
+    vocab: int,
+    dim: int = 128,
+    n_layers: int = 4,
+    num_heads: int = 4,
+    num_kv_heads: int = 2,
+    max_seq_len: int = 1024,
+):
     if variant == "dense":
         from train_v4 import DenseLM
-        return DenseLM(vocab=vocab, n_layers=n_layers, dim=dim,
-                       n_heads=num_heads, n_kv_heads=num_kv_heads,
-                       max_len=max_seq_len)
+
+        return DenseLM(
+            vocab=vocab,
+            n_layers=n_layers,
+            dim=dim,
+            n_heads=num_heads,
+            n_kv_heads=num_kv_heads,
+            max_len=max_seq_len,
+        )
     if variant == "hymba":
         from hymba_lm import HymbaLM
-        return HymbaLM(vocab_size=vocab, n_layers=n_layers, dim=dim,
-                       num_heads=num_heads, num_kv_heads=num_kv_heads,
-                       max_seq_len=max_seq_len)
+
+        return HymbaLM(
+            vocab_size=vocab,
+            n_layers=n_layers,
+            dim=dim,
+            num_heads=num_heads,
+            num_kv_heads=num_kv_heads,
+            max_seq_len=max_seq_len,
+        )
     if variant.startswith("hymba-with-nsa") or variant == "hymba-with-asa":
         from hymba_with_nsa_lm import HymbaWithNSALM
+
         random_gate = variant == "hymba-with-nsa-randgate"
-        use_attn_gate = variant in ("hymba-with-nsa-gated",
-                                    "hymba-with-nsa-randgate")
-        gate_mode = "predictive_coding" if variant == "hymba-with-nsa-pcgate" else "linear"
+        use_attn_gate = variant in ("hymba-with-nsa-gated", "hymba-with-nsa-randgate")
+        gate_mode = (
+            "predictive_coding" if variant == "hymba-with-nsa-pcgate" else "linear"
+        )
         attn_mode = "asa" if variant == "hymba-with-asa" else "nsa"
-        return HymbaWithNSALM(vocab_size=vocab, n_layers=n_layers, dim=dim,
-                              num_heads=num_heads, num_kv_heads=num_kv_heads,
-                              max_seq_len=max_seq_len,
-                              random_gate=random_gate, attn_mode=attn_mode,
-                              use_attn_gate=use_attn_gate,
-                              gate_mode=gate_mode)
+        return HymbaWithNSALM(
+            vocab_size=vocab,
+            n_layers=n_layers,
+            dim=dim,
+            num_heads=num_heads,
+            num_kv_heads=num_kv_heads,
+            max_seq_len=max_seq_len,
+            random_gate=random_gate,
+            attn_mode=attn_mode,
+            use_attn_gate=use_attn_gate,
+            gate_mode=gate_mode,
+        )
     if variant.startswith("v4"):
         from hspmn_v4_lm import HSPMNv4LM, HSPMNv4LMConfig
+
         if "mamba3" in variant:
             reflexive = "mamba3"
         elif "rwkv7" in variant:
             reflexive = "rwkv7"
         else:
             reflexive = "gdn"
-        attention = "asa" if "asa" in variant else ("nsa" if "nsa" in variant else "sqsk")
-        cfg = HSPMNv4LMConfig(vocab_size=vocab, n_layers=n_layers, dim=dim,
-                              num_heads=num_heads, num_kv_heads=num_kv_heads,
-                              max_seq_len=max_seq_len, reflexive=reflexive,
-                              attention=attention,
-                              random_gate=("randgate" in variant))
+        attention = (
+            "asa" if "asa" in variant else ("nsa" if "nsa" in variant else "sqsk")
+        )
+        cfg = HSPMNv4LMConfig(
+            vocab_size=vocab,
+            n_layers=n_layers,
+            dim=dim,
+            num_heads=num_heads,
+            num_kv_heads=num_kv_heads,
+            max_seq_len=max_seq_len,
+            reflexive=reflexive,
+            attention=attention,
+            random_gate=("randgate" in variant),
+        )
         return HSPMNv4LM(cfg)
     raise ValueError(variant)
 
@@ -86,33 +129,61 @@ def build_lm(variant: str, vocab: int, dim: int = 128, n_layers: int = 4,
 def make_batch(task: str, B: int, device: str, seed: int):
     cfg = TASK_CFG[task]
     if task == "mqar":
-        return build_mqar_batch(B, cfg["n_kv"], cfg["n_query"],
-                                vocab=cfg["vocab"], device=device, seed=seed)
+        return build_mqar_batch(
+            B, cfg["n_kv"], cfg["n_query"], vocab=cfg["vocab"], device=device, seed=seed
+        )
     if task == "dyck2":
-        ids, labels = build_dyck2_batch(B, cfg["length"], cfg["max_depth"],
-                                        device=device, seed=seed)
+        ids, labels = build_dyck2_batch(
+            B, cfg["length"], cfg["max_depth"], device=device, seed=seed
+        )
         return ids, labels
     if task == "parity":
-        return build_parity_batch(B, cfg["length"], p_query=cfg["p_query"],
-                                  device=device, seed=seed)
+        return build_parity_batch(
+            B, cfg["length"], p_query=cfg["p_query"], device=device, seed=seed
+        )
 
 
 def evaluate(task: str, model, device: str, n_examples: int = 256):
     cfg = TASK_CFG[task]
     if task == "mqar":
-        return evaluate_mqar(model, cfg["n_kv"], cfg["n_query"],
-                             vocab=cfg["vocab"], n_examples=n_examples,
-                             device=device, batch_size=16)
+        return evaluate_mqar(
+            model,
+            cfg["n_kv"],
+            cfg["n_query"],
+            vocab=cfg["vocab"],
+            n_examples=n_examples,
+            device=device,
+            batch_size=16,
+        )
     if task == "dyck2":
-        return evaluate_dyck2(model, cfg["length"], cfg["max_depth"],
-                              n_examples=n_examples, device=device, batch_size=16)
+        return evaluate_dyck2(
+            model,
+            cfg["length"],
+            cfg["max_depth"],
+            n_examples=n_examples,
+            device=device,
+            batch_size=16,
+        )
     if task == "parity":
-        return evaluate_parity(model, cfg["length"], p_query=cfg["p_query"],
-                               n_examples=n_examples, device=device, batch_size=16)
+        return evaluate_parity(
+            model,
+            cfg["length"],
+            p_query=cfg["p_query"],
+            n_examples=n_examples,
+            device=device,
+            batch_size=16,
+        )
 
 
-def train_one(task: str, variant: str, steps: int = 2000, B: int = 32,
-              lr: float = 3e-4, device: str = "cuda", seed: int = 42) -> dict:
+def train_one(
+    task: str,
+    variant: str,
+    steps: int = 2000,
+    B: int = 32,
+    lr: float = 3e-4,
+    device: str = "cuda",
+    seed: int = 42,
+) -> dict:
     cfg = TASK_CFG[task]
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -122,8 +193,14 @@ def train_one(task: str, variant: str, steps: int = 2000, B: int = 32,
     if device == "cuda" and torch.cuda.is_bf16_supported():
         model = model.to(torch.bfloat16)
 
-    opt = torch.optim.AdamW(model.parameters(), lr=lr, betas=(0.9, 0.95),
-                            eps=1e-8, weight_decay=0.01, fused=(device == "cuda"))
+    opt = torch.optim.AdamW(
+        model.parameters(),
+        lr=lr,
+        betas=(0.9, 0.95),
+        eps=1e-8,
+        weight_decay=0.01,
+        fused=(device == "cuda"),
+    )
 
     model.train()
     losses = []
@@ -153,11 +230,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", choices=list(TASK_CFG.keys()))
     ap.add_argument("--variant", choices=VARIANTS)
-    ap.add_argument("--all", action="store_true",
-                    help="Run all (variant, task) combinations and dump JSON.")
+    ap.add_argument(
+        "--all",
+        action="store_true",
+        help="Run all (variant, task) combinations and dump JSON.",
+    )
     ap.add_argument("--steps", type=int, default=2000)
     ap.add_argument("--lr", type=float, default=3e-4)
-    ap.add_argument("--out", default="/opt/docker/LLM/HSPMN/results/phase1_synthetics.json")
+    ap.add_argument(
+        "--out", default="/opt/docker/LLM/HSPMN/results/phase1_synthetics.json"
+    )
     args = ap.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -168,14 +250,20 @@ def main():
             for variant in VARIANTS:
                 print(f"\n=== task={task}  variant={variant} ===")
                 try:
-                    res = train_one(task, variant, steps=args.steps, lr=args.lr,
-                                    device=device)
+                    res = train_one(
+                        task, variant, steps=args.steps, lr=args.lr, device=device
+                    )
                     print(f"  → {res}")
                     results.append(res)
                 except Exception as e:
                     print(f"  FAILED: {type(e).__name__}: {e}")
-                    results.append({"task": task, "variant": variant,
-                                    "error": f"{type(e).__name__}: {e}"})
+                    results.append(
+                        {
+                            "task": task,
+                            "variant": variant,
+                            "error": f"{type(e).__name__}: {e}",
+                        }
+                    )
         os.makedirs(os.path.dirname(args.out), exist_ok=True)
         with open(args.out, "w") as f:
             json.dump(results, f, indent=2)
@@ -183,8 +271,9 @@ def main():
     else:
         if not (args.task and args.variant):
             raise SystemExit("Must pass --task and --variant, or --all")
-        res = train_one(args.task, args.variant, steps=args.steps, lr=args.lr,
-                        device=device)
+        res = train_one(
+            args.task, args.variant, steps=args.steps, lr=args.lr, device=device
+        )
         print(json.dumps(res, indent=2))
 
 

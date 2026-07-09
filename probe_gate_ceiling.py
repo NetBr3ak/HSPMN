@@ -20,6 +20,7 @@ Usage:
         --ckpt checkpoints_p4_gated_s42/hymba-with-nsa-gated_p4_final.pt \
         --n_layers 24 --dim 896 --num_heads 14 --num_kv_heads 2
 """
+
 import argparse
 import math
 from pathlib import Path
@@ -42,9 +43,13 @@ def binary_entropy_bits(p):
 
 def fit_logistic(Xtr, ytr, Xva, epochs=300, lr=0.05, wd=1e-3, device="cpu"):
     """Tiny regularized logistic regression (fp32). Returns val probabilities."""
-    Xtr = Xtr.to(device); ytr = ytr.to(device); Xva = Xva.to(device)
-    mu = Xtr.mean(0, keepdim=True); sd = Xtr.std(0, keepdim=True).clamp_min(1e-6)
-    Xtr = (Xtr - mu) / sd; Xva = (Xva - mu) / sd
+    Xtr = Xtr.to(device)
+    ytr = ytr.to(device)
+    Xva = Xva.to(device)
+    mu = Xtr.mean(0, keepdim=True)
+    sd = Xtr.std(0, keepdim=True).clamp_min(1e-6)
+    Xtr = (Xtr - mu) / sd
+    Xva = (Xva - mu) / sd
     w = torch.zeros(Xtr.size(1), 1, device=device, requires_grad=True)
     b = torch.zeros(1, device=device, requires_grad=True)
     opt = torch.optim.Adam([w, b], lr=lr, weight_decay=wd)
@@ -52,7 +57,8 @@ def fit_logistic(Xtr, ytr, Xva, epochs=300, lr=0.05, wd=1e-3, device="cpu"):
         opt.zero_grad()
         logit = Xtr @ w + b
         loss = F.binary_cross_entropy_with_logits(logit.squeeze(-1), ytr)
-        loss.backward(); opt.step()
+        loss.backward()
+        opt.step()
     with torch.no_grad():
         pva = torch.sigmoid(Xva @ w + b).squeeze(-1)
     return pva.cpu().numpy()
@@ -64,39 +70,52 @@ def collect(model, valid_tok, n_batches, batch, seq, device):
         return None
     model.train(False)
     # Capture each gate's input h_t via a pre-hook on attn_gate_proj.
-    feats = {i: [] for i, _ in layers}
     cap = {}
 
-    def mk(i, l):
+    def mk(i, layer):
         def pre(mod, inp):
             cap[i] = inp[0].detach()
-        return l.attn_gate_proj.register_forward_pre_hook(pre)
-    handles = [mk(i, l) for i, l in layers if getattr(l, "attn_gate_proj", None) is not None]
+
+        return layer.attn_gate_proj.register_forward_pre_hook(pre)
+
+    handles = [
+        mk(i, layer)
+        for i, layer in layers
+        if getattr(layer, "attn_gate_proj", None) is not None
+    ]
     if not handles:
         return None  # pcgate etc. has no attn_gate_proj input to probe
 
     rng = np.random.default_rng(0)
-    starts = [rng.integers(0, len(valid_tok) - seq - 1, size=(batch,)) for _ in range(n_batches)]
-    Hs = {i: [] for i, _ in layers}; Ss = {i: [] for i, _ in layers}
+    starts = [
+        rng.integers(0, len(valid_tok) - seq - 1, size=(batch,))
+        for _ in range(n_batches)
+    ]
+    Hs = {i: [] for i, _ in layers}
+    Ss = {i: [] for i, _ in layers}
     with torch.no_grad():
         for s_off in starts:
-            x = np.stack([valid_tok[a:a + seq] for a in s_off])
+            x = np.stack([valid_tok[a : a + seq] for a in s_off])
             x_t = torch.from_numpy(x).long().to(device)
             cap.clear()
-            ce_on = per_token_ce(model, x_t, device)            # [B,S-1]; fills cap
-            hcap = {i: cap[i][:, :-1, :].reshape(-1, cap[i].size(-1)).float().cpu()
-                    for i in cap}                               # align to CE positions
-            for i, l in layers:
+            ce_on = per_token_ce(model, x_t, device)  # [B,S-1]; fills cap
+            hcap = {
+                i: cap[i][:, :-1, :].reshape(-1, cap[i].size(-1)).float().cpu()
+                for i in cap
+            }  # align to CE positions
+            for i, layer in layers:
                 if i not in hcap:
                     continue
-                handle = l.nsa.register_forward_hook(
-                    lambda m, inp, out: out._replace(out=torch.zeros_like(out.out)))
+                handle = layer.nsa.register_forward_hook(
+                    lambda m, inp, out: out._replace(out=torch.zeros_like(out.out))
+                )
                 try:
                     ce_off = per_token_ce(model, x_t, device)
                 finally:
                     handle.remove()
                 s = (ce_off - ce_on > 0).long().reshape(-1).cpu()
-                Hs[i].append(hcap[i]); Ss[i].append(s)
+                Hs[i].append(hcap[i])
+                Ss[i].append(s)
     for h in handles:
         h.remove()
     return {i: (torch.cat(Hs[i]), torch.cat(Ss[i])) for i in Hs if Hs[i]}
@@ -121,10 +140,20 @@ def main():
     seed_everything(args.seed)
     device = get_device()
     dtype = torch.bfloat16 if device.type == "cuda" else torch.float32
-    cfg = TrainConfig(variant=args.variant, n_layers=args.n_layers, dim=args.dim,
-                      num_heads=args.num_heads, num_kv_heads=args.num_kv_heads,
-                      seq_len=args.seq_len, batch_size=args.batch, grad_accum=1,
-                      steps=1, lr=1e-3, warmup_steps=1, nsa_window=256)
+    cfg = TrainConfig(
+        variant=args.variant,
+        n_layers=args.n_layers,
+        dim=args.dim,
+        num_heads=args.num_heads,
+        num_kv_heads=args.num_kv_heads,
+        seq_len=args.seq_len,
+        batch_size=args.batch,
+        grad_accum=1,
+        steps=1,
+        lr=1e-3,
+        warmup_steps=1,
+        nsa_window=256,
+    )
     valid_tok = np.load(f"{args.data_dir}/valid_tokens.npy", mmap_mode="r")
     train_tok = np.load(f"{args.data_dir}/train_tokens.npy", mmap_mode="r")
     vocab = max(int(max(train_tok.max(), valid_tok.max())) + 1, 50257)
@@ -140,7 +169,8 @@ def main():
     rows = []
     for i in sorted(data):
         H, S = data[i]
-        n = H.size(0); ntr = int(n * 0.7)
+        n = H.size(0)
+        ntr = int(n * 0.7)
         perm = torch.randperm(n, generator=torch.Generator().manual_seed(0))
         H, S = H[perm], S[perm]
         Xtr, ytr, Xva, yva = H[:ntr], S[:ntr].float(), H[ntr:], S[ntr:]
@@ -156,29 +186,49 @@ def main():
     thr = 0.5 * math.log2(math.e) + binary_entropy_bits(p_avg) - 1.0
     mi_avg = float(np.mean([r[4] for r in rows]))
     print(f"\nGate-input -> NSA-helps decodability (held-out), variant={args.variant}")
-    print(f"{'layer':>5} {'p(s=1)':>7} {'H(s)':>6} {'val_acc':>8} {'I(pred;s) bits':>14}")
+    print(
+        f"{'layer':>5} {'p(s=1)':>7} {'H(s)':>6} {'val_acc':>8} {'I(pred;s) bits':>14}"
+    )
     for i, p, hs, acc, mi in rows:
         print(f"{i:>5} {p:>7.3f} {hs:>6.3f} {acc:>8.3f} {mi:>14.4f}")
-    print(f"\nmean held-out I(pred;s) = {mi_avg:.4f} bits  | full-benefit threshold = {thr:.3f} bits")
-    verdict = ("CEILING ABOVE THRESHOLD -> signal exists in h_t; a supervised gate "
-               "could cross -> WORTH training." if mi_avg > thr else
-               "CEILING BELOW THRESHOLD -> the NSA-helps signal is not linearly "
-               "decodable from the gate input; NO gate of this form can cross the "
-               "threshold. The theorem's null is structural, not a training failure.")
+    print(
+        f"\nmean held-out I(pred;s) = {mi_avg:.4f} bits  | full-benefit threshold = {thr:.3f} bits"
+    )
+    verdict = (
+        "CEILING ABOVE THRESHOLD -> signal exists in h_t; a supervised gate "
+        "could cross -> WORTH training."
+        if mi_avg > thr
+        else "CEILING BELOW THRESHOLD -> the NSA-helps signal is not linearly "
+        "decodable from the gate input; NO gate of this form can cross the "
+        "threshold. The theorem's null is structural, not a training failure."
+    )
     print(f"VERDICT: {verdict}")
 
-    out = Path(args.out_md) if args.out_md else Path(
-        f"/opt/docker/LLM/HSPMN/results/gate_ceiling_{args.variant}_2026-06.md")
-    lines = [f"# Gate-ceiling probe - {args.variant}", "",
-             f"Checkpoint `{args.ckpt}`. Held-out logistic probe h_t -> s_t "
-             f"(s = NSA-ablation raises CE).", "",
-             "| layer | p(s=1) | H(s) | val_acc | I(pred;s) bits |",
-             "|---|---|---|---|---|"]
+    out = (
+        Path(args.out_md)
+        if args.out_md
+        else Path(
+            f"/opt/docker/LLM/HSPMN/results/gate_ceiling_{args.variant}_2026-06.md"
+        )
+    )
+    lines = [
+        f"# Gate-ceiling probe - {args.variant}",
+        "",
+        f"Checkpoint `{args.ckpt}`. Held-out logistic probe h_t -> s_t "
+        f"(s = NSA-ablation raises CE).",
+        "",
+        "| layer | p(s=1) | H(s) | val_acc | I(pred;s) bits |",
+        "|---|---|---|---|---|",
+    ]
     for i, p, hs, acc, mi in rows:
         lines.append(f"| {i} | {p:.3f} | {hs:.3f} | {acc:.3f} | {mi:.4f} |")
-    lines += ["", f"**mean held-out I(pred;s) = {mi_avg:.4f} bits** vs "
-              f"full-benefit threshold = {thr:.3f} bits (Pinsker form).",
-              "", f"**VERDICT:** {verdict}"]
+    lines += [
+        "",
+        f"**mean held-out I(pred;s) = {mi_avg:.4f} bits** vs "
+        f"full-benefit threshold = {thr:.3f} bits (Pinsker form).",
+        "",
+        f"**VERDICT:** {verdict}",
+    ]
     out.write_text("\n".join(lines))
     print(f"Wrote {out}")
 

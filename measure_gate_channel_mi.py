@@ -28,6 +28,7 @@ Usage:
         --ckpt checkpoints_p2b/hymba-with-nsa-gated_lr1e-3_seed42/hymba-with-nsa-gated_final.pt \
         --n_layers 12 --dim 768 --num_heads 12 --num_kv_heads 4
 """
+
 import argparse
 import math
 from pathlib import Path
@@ -57,8 +58,14 @@ def mutual_information_bits(g, s, n_bins=10):
     pg = joint.sum(axis=1, keepdims=True)
     ps = joint.sum(axis=0, keepdims=True)
     nz = joint > 0
-    mi = float((joint[nz] * np.log2(joint[nz] / (pg @ np.ones((1, 2)))[nz]
-                                    / (np.ones((n_bins, 1)) @ ps)[nz])).sum())
+    mi = float(
+        (
+            joint[nz]
+            * np.log2(
+                joint[nz] / (pg @ np.ones((1, 2)))[nz] / (np.ones((n_bins, 1)) @ ps)[nz]
+            )
+        ).sum()
+    )
     # Miller-Madow correction: + (cells_used - rows_used - cols_used + 1)/(2 N ln2)
     cells = int(nz.sum())
     rows = int((pg > 0).sum())
@@ -91,13 +98,17 @@ def per_token_ce(model, x_t, device):
 
 
 def gated_layers(model):
-    return [(i, l) for i, l in enumerate(model.layers)
-            if getattr(l, "attn_gate_proj", None) is not None
-            or getattr(l, "gate_mode", "linear") == "predictive_coding"]
+    return [
+        (i, layer)
+        for i, layer in enumerate(model.layers)
+        if getattr(layer, "attn_gate_proj", None) is not None
+        or getattr(layer, "gate_mode", "linear") == "predictive_coding"
+    ]
 
 
-def measure(model, valid_tok, n_batches, batch, seq, device, margin, n_bins,
-            label_model=None):
+def measure(
+    model, valid_tok, n_batches, batch, seq, device, margin, n_bins, label_model=None
+):
     """Measure I(g; s). g (the gate) always comes from `model`. The label s
     (does NSA help) comes from `label_model` when given -- an INDEPENDENTLY
     trained gate-free baseline -- which makes the measurement non-circular: g
@@ -111,38 +122,41 @@ def measure(model, valid_tok, n_batches, batch, seq, device, margin, n_bins,
     s_model.train(False)
 
     rng = np.random.default_rng(seed=0)
-    starts = [rng.integers(0, len(valid_tok) - seq - 1, size=(batch,))
-              for _ in range(n_batches)]
+    starts = [
+        rng.integers(0, len(valid_tok) - seq - 1, size=(batch,))
+        for _ in range(n_batches)
+    ]
 
     g_acc = {i: [] for i, _ in layers}
     s_acc = {i: [] for i, _ in layers}
 
     with torch.no_grad():
         for s_off in starts:
-            x = np.stack([valid_tok[a:a + seq] for a in s_off])
+            x = np.stack([valid_tok[a : a + seq] for a in s_off])
             x_t = torch.from_numpy(x).long().to(device)
 
             # Gate g^L_t from the main model.
-            _ = per_token_ce(model, x_t, device)                # populates _last_gate
+            _ = per_token_ce(model, x_t, device)  # populates _last_gate
             gates = {}
-            for i, l in layers:
-                g = getattr(l, "_last_gate", None)              # [B, n_attn, S, 1]
+            for i, layer in layers:
+                g = getattr(layer, "_last_gate", None)  # [B, n_attn, S, 1]
                 if g is None:
                     continue
-                gm = g.float().mean(dim=1).squeeze(-1)          # [B, S]
-                gates[i] = gm[:, :-1]                           # align to CE positions
+                gm = g.float().mean(dim=1).squeeze(-1)  # [B, S]
+                gates[i] = gm[:, :-1]  # align to CE positions
 
             # Label s^L_t from s_model (the gate-free baseline when cross-model).
-            ce_on = per_token_ce(s_model, x_t, device)          # [B, S-1]
+            ce_on = per_token_ce(s_model, x_t, device)  # [B, S-1]
             for i, _l in layers:
                 tgt = s_model.layers[i]
                 handle = tgt.nsa.register_forward_hook(
-                    lambda m, inp, out: out._replace(out=torch.zeros_like(out.out)))
+                    lambda m, inp, out: out._replace(out=torch.zeros_like(out.out))
+                )
                 try:
                     ce_off = per_token_ce(s_model, x_t, device)
                 finally:
                     handle.remove()
-                delta = (ce_off - ce_on)                        # >0 => NSA helped
+                delta = ce_off - ce_on  # >0 => NSA helped
                 s = (delta > margin).long()
                 if i in gates:
                     g_acc[i].append(gates[i].reshape(-1).cpu().numpy())
@@ -179,24 +193,42 @@ def main():
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--out_md", default=None)
     ap.add_argument("--data_dir", default=DATA_DIR)
-    ap.add_argument("--label_ckpt", default=None,
-                    help="Gate-free baseline checkpoint to define the label s "
-                         "(non-circular). If omitted, s is self-measured on --ckpt.")
-    ap.add_argument("--label_variant", default="hymba-with-nsa",
-                    help="Variant of --label_ckpt (default: gate-free base).")
+    ap.add_argument(
+        "--label_ckpt",
+        default=None,
+        help="Gate-free baseline checkpoint to define the label s "
+        "(non-circular). If omitted, s is self-measured on --ckpt.",
+    )
+    ap.add_argument(
+        "--label_variant",
+        default="hymba-with-nsa",
+        help="Variant of --label_ckpt (default: gate-free base).",
+    )
     args = ap.parse_args()
 
     mi_i, mi_d = _selftest_mi()
-    print(f"MI estimator self-test OK: independent={mi_i:.4f} bits, "
-          f"deterministic={mi_d:.4f} bits")
+    print(
+        f"MI estimator self-test OK: independent={mi_i:.4f} bits, "
+        f"deterministic={mi_d:.4f} bits"
+    )
 
     seed_everything(args.seed)
     device = get_device()
     dtype = torch.bfloat16 if device.type == "cuda" else torch.float32
-    cfg = TrainConfig(variant=args.variant, n_layers=args.n_layers, dim=args.dim,
-                      num_heads=args.num_heads, num_kv_heads=args.num_kv_heads,
-                      seq_len=args.seq_len, batch_size=args.batch, grad_accum=1,
-                      steps=1, lr=1e-3, warmup_steps=1, nsa_window=256)
+    cfg = TrainConfig(
+        variant=args.variant,
+        n_layers=args.n_layers,
+        dim=args.dim,
+        num_heads=args.num_heads,
+        num_kv_heads=args.num_kv_heads,
+        seq_len=args.seq_len,
+        batch_size=args.batch,
+        grad_accum=1,
+        steps=1,
+        lr=1e-3,
+        warmup_steps=1,
+        nsa_window=256,
+    )
 
     valid_tok = np.load(f"{args.data_dir}/valid_tokens.npy", mmap_mode="r")
     train_tok = np.load(f"{args.data_dir}/train_tokens.npy", mmap_mode="r")
@@ -208,17 +240,37 @@ def main():
 
     label_model = None
     if args.label_ckpt:
-        lcfg = TrainConfig(variant=args.label_variant, n_layers=args.n_layers,
-                           dim=args.dim, num_heads=args.num_heads,
-                           num_kv_heads=args.num_kv_heads, seq_len=args.seq_len,
-                           batch_size=args.batch, grad_accum=1, steps=1, lr=1e-3,
-                           warmup_steps=1, nsa_window=256)
+        lcfg = TrainConfig(
+            variant=args.label_variant,
+            n_layers=args.n_layers,
+            dim=args.dim,
+            num_heads=args.num_heads,
+            num_kv_heads=args.num_kv_heads,
+            seq_len=args.seq_len,
+            batch_size=args.batch,
+            grad_accum=1,
+            steps=1,
+            lr=1e-3,
+            warmup_steps=1,
+            nsa_window=256,
+        )
         label_model = build_model(lcfg, vocab, device, dtype)
-        label_model.load_state_dict(torch.load(args.label_ckpt, map_location=device)["model"])
+        label_model.load_state_dict(
+            torch.load(args.label_ckpt, map_location=device)["model"]
+        )
         print(f"loaded label model (non-circular s): {args.label_ckpt}")
 
-    res = measure(model, valid_tok, args.n_batches, args.batch, args.seq_len,
-                  device, args.margin, args.n_bins, label_model=label_model)
+    res = measure(
+        model,
+        valid_tok,
+        args.n_batches,
+        args.batch,
+        args.seq_len,
+        device,
+        args.margin,
+        args.n_bins,
+        label_model=label_model,
+    )
     if res is None:
         print("No gated layers on this variant - I(g;s) not measurable.")
         return
@@ -228,28 +280,45 @@ def main():
     print(f"\nPer-layer I(g; s) [bits], variant={args.variant}:")
     for i in sorted(res):
         v = res[i]
-        print(f"  layer {i:2d}: I={v['mi_bits']:.4f}  p(NSA helps)={v['p_helps']:.3f}  "
-              f"gate_mean={v['gate_mean']:.3f}  n={v['n']}")
+        print(
+            f"  layer {i:2d}: I={v['mi_bits']:.4f}  p(NSA helps)={v['p_helps']:.3f}  "
+            f"gate_mean={v['gate_mean']:.3f}  n={v['n']}"
+        )
     print(f"mean I(g; s) = {mi_mean:.4f} bits")
 
-    out_md = Path(args.out_md) if args.out_md else Path(
-        f"/opt/docker/LLM/HSPMN/results/gate_channel_mi_{args.variant}_2026-06-02.md")
-    lines = [f"# Gate-as-channel I(g; s) - {args.variant} (2026-06-02)", "",
-             f"**Checkpoint:** `{args.ckpt}`.",
-             f"Counterfactual label: per-layer NSA ablation raises next-token CE "
-             f"by > {args.margin} (independent of gate params).",
-             f"MI estimator self-test: independent={mi_i:.4f}, det={mi_d:.4f} bits.",
-             "", "| Layer | I(g;s) bits | p(NSA helps) | gate.mean | n |",
-             "|---|---|---|---|---|"]
+    out_md = (
+        Path(args.out_md)
+        if args.out_md
+        else Path(
+            f"/opt/docker/LLM/HSPMN/results/gate_channel_mi_{args.variant}_2026-06-02.md"
+        )
+    )
+    lines = [
+        f"# Gate-as-channel I(g; s) - {args.variant} (2026-06-02)",
+        "",
+        f"**Checkpoint:** `{args.ckpt}`.",
+        f"Counterfactual label: per-layer NSA ablation raises next-token CE "
+        f"by > {args.margin} (independent of gate params).",
+        f"MI estimator self-test: independent={mi_i:.4f}, det={mi_d:.4f} bits.",
+        "",
+        "| Layer | I(g;s) bits | p(NSA helps) | gate.mean | n |",
+        "|---|---|---|---|---|",
+    ]
     for i in sorted(res):
         v = res[i]
-        lines.append(f"| {i} | {v['mi_bits']:.4f} | {v['p_helps']:.3f} | "
-                     f"{v['gate_mean']:.3f} | {v['n']} |")
-    lines += ["", f"**mean I(g; s) = {mi_mean:.4f} bits**", "",
-              "Interpretation: a learned gate routes where the contextual stream "
-              "helps, so I(g;s) > 0; the random-gate control should give I ~ 0. "
-              "This is a non-circular, predictive separation criterion that does "
-              "not depend on the loss curvature lambda."]
+        lines.append(
+            f"| {i} | {v['mi_bits']:.4f} | {v['p_helps']:.3f} | "
+            f"{v['gate_mean']:.3f} | {v['n']} |"
+        )
+    lines += [
+        "",
+        f"**mean I(g; s) = {mi_mean:.4f} bits**",
+        "",
+        "Interpretation: a learned gate routes where the contextual stream "
+        "helps, so I(g;s) > 0; the random-gate control should give I ~ 0. "
+        "This is a non-circular, predictive separation criterion that does "
+        "not depend on the loss curvature lambda.",
+    ]
     out_md.write_text("\n".join(lines))
     print(f"Wrote {out_md}")
 

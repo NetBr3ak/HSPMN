@@ -10,8 +10,9 @@ This implementation:
 
 Used as a baseline against HSPMN v4.0 dual-stream design.
 """
+
 import math
-from typing import Tuple, Optional
+from typing import Tuple
 
 import torch
 import torch.nn as nn
@@ -24,10 +25,18 @@ from hspmn_v3_0 import RotaryEmbedding, apply_rotary_pos_emb
 class HymbaBlock(nn.Module):
     """Parallel attention + SSM heads, mean-fused + SwiGLU MLP tail."""
 
-    def __init__(self, dim: int, num_heads: int, num_kv_heads: int,
-                 head_dim: int, mlp_ratio: int = 4, max_seq_len: int = 2048,
-                 rope_base: int = 10000, attn_frac: float = 0.5,
-                 num_meta_tokens: int = 64):
+    def __init__(
+        self,
+        dim: int,
+        num_heads: int,
+        num_kv_heads: int,
+        head_dim: int,
+        mlp_ratio: int = 4,
+        max_seq_len: int = 2048,
+        rope_base: int = 10000,
+        attn_frac: float = 0.5,
+        num_meta_tokens: int = 64,
+    ):
         super().__init__()
         self.dim = dim
         self.num_heads = num_heads
@@ -54,8 +63,10 @@ class HymbaBlock(nn.Module):
             ssm_dim = self.n_ssm_heads * head_dim
             ssm_kv_heads = max(1, num_kv_heads * self.n_ssm_heads // num_heads)
             self.ssm = GatedDeltaNetReflexive(
-                dim=ssm_dim, num_heads=self.n_ssm_heads,
-                num_kv_heads=ssm_kv_heads, head_dim=head_dim,
+                dim=ssm_dim,
+                num_heads=self.n_ssm_heads,
+                num_kv_heads=ssm_kv_heads,
+                head_dim=head_dim,
                 mlp_ratio=1,  # MLP separate; here we just want attention output
                 use_fla=None,  # auto: FLA on CUDA, fallback on CPU
             )
@@ -81,37 +92,58 @@ class HymbaBlock(nn.Module):
 
     def _init_weights(self):
         scale = 1.0 / math.sqrt(self.dim)
-        for m in [self.q_proj, self.k_proj, self.v_proj, self.o_proj,
-                  self.gate_proj, self.up_proj, self.down_proj]:
+        for m in [
+            self.q_proj,
+            self.k_proj,
+            self.v_proj,
+            self.o_proj,
+            self.gate_proj,
+            self.up_proj,
+            self.down_proj,
+        ]:
             nn.init.xavier_uniform_(m.weight, gain=scale)
         if self.ssm is not None:
             for m in [self.ssm_in_proj, self.ssm_k_proj, self.ssm_v_proj]:
                 nn.init.xavier_uniform_(m.weight, gain=scale)
 
-    def forward(self, x: torch.Tensor, past_key_values=None) -> Tuple[torch.Tensor, torch.Tensor, tuple]:
+    def forward(
+        self, x: torch.Tensor, past_key_values=None
+    ) -> Tuple[torch.Tensor, torch.Tensor, tuple]:
         B, S, D = x.shape
         x_norm = self.norm(x)
 
         # ---- Attention branch (top n_attn_heads heads) ----
-        n_attn_dim = self.n_attn_heads * self.head_dim
         # We compute full Q/K/V then slice - simplest correct path.
-        q = self.q_proj(x_norm).view(B, S, self.num_heads, self.head_dim).transpose(1, 2)
-        k = self.k_proj(x_norm).view(B, S, self.num_kv_heads, self.head_dim).transpose(1, 2)
-        v = self.v_proj(x_norm).view(B, S, self.num_kv_heads, self.head_dim).transpose(1, 2)
+        q = (
+            self.q_proj(x_norm)
+            .view(B, S, self.num_heads, self.head_dim)
+            .transpose(1, 2)
+        )
+        k = (
+            self.k_proj(x_norm)
+            .view(B, S, self.num_kv_heads, self.head_dim)
+            .transpose(1, 2)
+        )
+        v = (
+            self.v_proj(x_norm)
+            .view(B, S, self.num_kv_heads, self.head_dim)
+            .transpose(1, 2)
+        )
         cos, sin = self.rope(q, S)
         q, k = apply_rotary_pos_emb(q, k, cos, sin)
         # GQA expand for SDPA
         k_exp = k.repeat_interleave(self.kv_groups, dim=1)
         v_exp = v.repeat_interleave(self.kv_groups, dim=1)
         # Slice n_attn_heads
-        q_a = q[:, :self.n_attn_heads]
-        k_a = k_exp[:, :self.n_attn_heads]
-        v_a = v_exp[:, :self.n_attn_heads]
+        q_a = q[:, : self.n_attn_heads]
+        k_a = k_exp[:, : self.n_attn_heads]
+        v_a = v_exp[:, : self.n_attn_heads]
         attn_out = F.scaled_dot_product_attention(q_a, k_a, v_a, is_causal=True)
         # Pad with zeros for ssm head dims to enable fused o_proj
-        attn_full = torch.zeros(B, self.num_heads, S, self.head_dim,
-                                device=x.device, dtype=x.dtype)
-        attn_full[:, :self.n_attn_heads] = attn_out
+        attn_full = torch.zeros(
+            B, self.num_heads, S, self.head_dim, device=x.device, dtype=x.dtype
+        )
+        attn_full[:, : self.n_attn_heads] = attn_out
 
         # ---- SSM branch (bottom n_ssm_heads heads) ----
         if self.ssm is not None:
@@ -119,8 +151,10 @@ class HymbaBlock(nn.Module):
             ssm_k = self.ssm_k_proj(x_norm)
             ssm_v = self.ssm_v_proj(x_norm)
             ssm_out = self.ssm(ssm_q, ssm_k, ssm_v)  # [B, S, ssm_dim]
-            ssm_out_view = ssm_out.view(B, S, self.n_ssm_heads, self.head_dim).transpose(1, 2)
-            attn_full[:, self.n_attn_heads:] = ssm_out_view
+            ssm_out_view = ssm_out.view(
+                B, S, self.n_ssm_heads, self.head_dim
+            ).transpose(1, 2)
+            attn_full[:, self.n_attn_heads :] = ssm_out_view
 
         # Hymba mean fusion: average across head dimension wasn't required here;
         # we instead let the o_proj linearly combine all heads. Equivalent at

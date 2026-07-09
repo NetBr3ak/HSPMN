@@ -30,6 +30,7 @@ selection path (compatible with torch.compile fullgraph + CUDAGraphs), but
 gradient flow is through the *gate values themselves*, not through the top-k
 which has no gradient.
 """
+
 from typing import NamedTuple
 
 import torch
@@ -37,10 +38,10 @@ import torch.nn as nn
 
 
 class RouterV4Output(NamedTuple):
-    gate: torch.Tensor          # [B, S] - ReLU(W_g x + b), nonneg, gradient-carrying
-    indices: torch.Tensor       # [B, K] - top-k token indices for contextual stream
-    kv_indices: torch.Tensor    # [B, K_kv] - top-k + local-window KV indices
-    aux_loss: torch.Tensor      # scalar - L1 penalty + z-loss + (optional) seq-balance
+    gate: torch.Tensor  # [B, S] - ReLU(W_g x + b), nonneg, gradient-carrying
+    indices: torch.Tensor  # [B, K] - top-k token indices for contextual stream
+    kv_indices: torch.Tensor  # [B, K_kv] - top-k + local-window KV indices
+    aux_loss: torch.Tensor  # scalar - L1 penalty + z-loss + (optional) seq-balance
     active_fraction: torch.Tensor  # scalar - fraction of tokens with gate>0
 
 
@@ -84,8 +85,12 @@ class ReMoERouter(nn.Module):
         # if below target, lower it. Multiplicative update keeps it positive.
         # `relative_excess` is in [-1, +inf): zero when on target, positive
         # when too active, negative when too sparse.
-        relative_excess = (active_fraction - self.target_sparsity) / max(self.target_sparsity, 1e-6)
-        self.l1_coef.mul_(torch.exp(self.l1_adapt_rate * relative_excess).clamp_(1e-6, 1e3))
+        relative_excess = (active_fraction - self.target_sparsity) / max(
+            self.target_sparsity, 1e-6
+        )
+        self.l1_coef.mul_(
+            torch.exp(self.l1_adapt_rate * relative_excess).clamp_(1e-6, 1e3)
+        )
 
     def forward(self, x: torch.Tensor) -> RouterV4Output:
         B, S, _ = x.shape
@@ -143,7 +148,7 @@ class ReMoERouter(nn.Module):
         kv_score = select_score.clone() if self.training else select_score
         if self.local_window > 0 and S >= self.local_window:
             kv_score = kv_score.clone() if not self.training else kv_score
-            kv_score[:, -self.local_window:] = kv_score[:, -self.local_window:] + 1e4
+            kv_score[:, -self.local_window :] = kv_score[:, -self.local_window :] + 1e4
         _, kv_indices = torch.topk(kv_score, K_kv, dim=1, sorted=False)
         kv_indices, _ = torch.sort(kv_indices, dim=-1)
         kv_indices = kv_indices.contiguous()

@@ -12,10 +12,10 @@ Usage:
         --ckpt /opt/docker/LLM/HSPMN/checkpoints_p4_350m/hymba-with-nsa_p4_final.pt \
         --variant hymba-with-nsa
 """
+
 import argparse
 import json
 from pathlib import Path
-import math
 
 import numpy as np
 import torch
@@ -42,7 +42,7 @@ def score_completion(model, tokenizer, ctx_text, ending_text, device):
     n_ctx = len(ctx_ids)
     if len(full_ids) <= n_ctx + 1:
         return float("inf")
-    target = torch.tensor(full_ids[n_ctx + 1:], dtype=torch.long, device=device)
+    target = torch.tensor(full_ids[n_ctx + 1 :], dtype=torch.long, device=device)
     pred_logits = logits[0, n_ctx:-1]  # [n_ending - 1, vocab]
     loss = F.cross_entropy(pred_logits, target, reduction="mean")
     return float(loss.item())
@@ -53,7 +53,9 @@ def main():
     ap.add_argument("--ckpt", required=True)
     ap.add_argument("--variant", required=True)
     ap.add_argument("--data", default="/opt/docker/LLM/HSPMN/data/hellaswag_val.jsonl")
-    ap.add_argument("--tokenizer", default="/opt/docker/LLM/HSPMN/data/tokenizer/tokenizer.json")
+    ap.add_argument(
+        "--tokenizer", default="/opt/docker/LLM/HSPMN/data/tokenizer/tokenizer.json"
+    )
     ap.add_argument("--max_examples", type=int, default=2000)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--out_md", default=None)
@@ -81,7 +83,9 @@ def main():
             ctx = ex["ctx"]
             endings = ex["endings"]
             label = ex["label"]
-            losses = [score_completion(model, tokenizer, ctx, e, device) for e in endings]
+            losses = [
+                score_completion(model, tokenizer, ctx, e, device) for e in endings
+            ]
             pred = int(np.argmin(losses))
             if pred == label:
                 correct += 1
@@ -89,18 +93,21 @@ def main():
             gap = losses[label] - min(losses[i] for i in range(4) if i != label)
             per_example_loss_gap.append(gap)
             if total % 100 == 0:
-                logger.info(f"  {total}/{args.max_examples}: acc={correct/total:.4f}")
+                logger.info(f"  {total}/{args.max_examples}: acc={correct / total:.4f}")
             if total >= args.max_examples:
                 break
 
     acc = correct / total
     mean_loss_gap = float(np.mean(per_example_loss_gap))
-    logger.info(f"\n=== Final ===")
+    logger.info("\n=== Final ===")
     logger.info(f"Accuracy: {acc:.4f} ({correct}/{total})")
-    logger.info(f"Mean (target loss − best wrong) gap: {mean_loss_gap:+.4f}  (negative = correct lower CE)")
+    logger.info(
+        f"Mean (target loss − best wrong) gap: {mean_loss_gap:+.4f}  (negative = correct lower CE)"
+    )
 
-    out_md = Path(args.out_md or
-                  f"/opt/docker/LLM/HSPMN/results/hellaswag_{args.variant}_eval.md")
+    out_md = Path(
+        args.out_md or f"/opt/docker/LLM/HSPMN/results/hellaswag_{args.variant}_eval.md"
+    )
     out_md.write_text(
         f"# HellaSwag - {args.variant}\n\n"
         f"**Checkpoint:** `{args.ckpt}`\n"

@@ -18,14 +18,13 @@ Output: per-layer table + summary.
 Usage:
     python3 measure_theorem_constants.py --variant hymba-with-nsa --ckpt PATH
 """
+
 import argparse
-import json
 import math
 from pathlib import Path
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 
 from train_v4 import TrainConfig, build_model
 from utils_v3_0 import seed_everything, get_device
@@ -43,6 +42,7 @@ def measure_sigma_C(model, valid_tok, n_batches, batch, seq, device):
             o = output.out
             n = o.float().norm(dim=-1)
             norms_by_layer.setdefault(layer_idx, []).append(float(n.mean().item()))
+
         return hook
 
     for idx, layer in enumerate(model.layers):
@@ -54,7 +54,7 @@ def measure_sigma_C(model, valid_tok, n_batches, batch, seq, device):
     with torch.no_grad():
         for _ in range(n_batches):
             starts = np.random.randint(0, len(valid_tok) - seq - 1, size=(batch,))
-            x = np.stack([valid_tok[s:s + seq] for s in starts])
+            x = np.stack([valid_tok[s : s + seq] for s in starts])
             x_t = torch.from_numpy(x).long().to(device)
             model(x_t)
 
@@ -76,22 +76,29 @@ def measure_gate_stats(model, valid_tok, n_batches, batch, seq, device):
             gf = g.float()
             p_active = float((gf > 0.5).float().mean().item())
             delta = float(torch.minimum(gf, 1 - gf).mean().item())
-            stats_by_layer.setdefault(layer_idx, []).append({
-                "p": p_active, "delta": delta,
-                "gate_mean": float(gf.mean().item()),
-                "gate_std": float(gf.std().item()),
-            })
+            stats_by_layer.setdefault(layer_idx, []).append(
+                {
+                    "p": p_active,
+                    "delta": delta,
+                    "gate_mean": float(gf.mean().item()),
+                    "gate_std": float(gf.std().item()),
+                }
+            )
+
         return hook
 
     for idx, layer in enumerate(model.layers):
-        if hasattr(layer, "attn_gate_proj") or getattr(layer, "gate_mode", "linear") == "predictive_coding":
+        if (
+            hasattr(layer, "attn_gate_proj")
+            or getattr(layer, "gate_mode", "linear") == "predictive_coding"
+        ):
             handles.append(layer.register_forward_hook(make_hook(idx)))
 
     model.train(False)
     with torch.no_grad():
         for _ in range(n_batches):
             starts = np.random.randint(0, len(valid_tok) - seq - 1, size=(batch,))
-            x = np.stack([valid_tok[s:s + seq] for s in starts])
+            x = np.stack([valid_tok[s : s + seq] for s in starts])
             x_t = torch.from_numpy(x).long().to(device)
             model(x_t)
 
@@ -101,7 +108,9 @@ def measure_gate_stats(model, valid_tok, n_batches, batch, seq, device):
     aggregated = {}
     for k, recs in stats_by_layer.items():
         if recs:
-            aggregated[k] = {kk: float(np.mean([r[kk] for r in recs])) for kk in recs[0]}
+            aggregated[k] = {
+                kk: float(np.mean([r[kk] for r in recs])) for kk in recs[0]
+            }
             aggregated[k]["gamma"] = 1.0 - 2.0 * aggregated[k]["delta"]
     return aggregated
 
@@ -113,8 +122,8 @@ def estimate_L_star(model, valid_tok, n_batches, batch, seq, device):
     with torch.no_grad():
         for _ in range(n_batches):
             starts = np.random.randint(0, len(valid_tok) - seq - 1, size=(batch,))
-            x = np.stack([valid_tok[s:s + seq] for s in starts])
-            y = np.stack([valid_tok[s + 1:s + seq + 1] for s in starts])
+            x = np.stack([valid_tok[s : s + seq] for s in starts])
+            y = np.stack([valid_tok[s + 1 : s + seq + 1] for s in starts])
             x_t = torch.from_numpy(x).long().to(device)
             y_t = torch.from_numpy(y).long().to(device)
             out = model(x_t, labels=y_t)
@@ -132,8 +141,8 @@ def _eval_loss_on_fixed_batches(model, valid_tok, fixed_starts, batch, seq, devi
     count = 0
     with torch.no_grad():
         for s_off in fixed_starts:
-            x = np.stack([valid_tok[s:s + seq] for s in s_off])
-            y = np.stack([valid_tok[s + 1:s + seq + 1] for s in s_off])
+            x = np.stack([valid_tok[s : s + seq] for s in s_off])
+            y = np.stack([valid_tok[s + 1 : s + seq + 1] for s in s_off])
             x_t = torch.from_numpy(x).long().to(device)
             y_t = torch.from_numpy(y).long().to(device)
             out = model(x_t, labels=y_t)
@@ -147,16 +156,18 @@ def _selftest_fd_curvature():
     """Validate the 5-point finite-difference curvature estimator on f(x)=x^2
     (true second derivative 2.0) before trusting it on the model. Guards against
     the kind of silent numerical failure that produced BUG-1 (lambda == 0)."""
-    f = lambda a: a * a
+    def f(a):
+        return a * a
+
     a0, h = 1.0, 1e-2
-    kappa = (-f(a0 + 2 * h) + 16 * f(a0 + h) - 30 * f(a0)
-             + 16 * f(a0 - h) - f(a0 + -2 * h)) / (12 * h * h)
+    kappa = (
+        -f(a0 + 2 * h) + 16 * f(a0 + h) - 30 * f(a0) + 16 * f(a0 - h) - f(a0 + -2 * h)
+    ) / (12 * h * h)
     assert abs(kappa - 2.0) < 1e-3, f"FD self-test failed: kappa={kappa} (expected 2.0)"
     return float(kappa)
 
 
-def measure_lambda_gate_gain(model, valid_tok, n_batches, batch, seq, device,
-                             eps=1e-2):
+def measure_lambda_gate_gain(model, valid_tok, n_batches, batch, seq, device, eps=1e-2):
     """Curvature of the loss w.r.t. a scalar gate-gain alpha, measured in fp32.
 
     Every ``attn_gate_proj`` output is scaled by a single scalar ``alpha``
@@ -180,8 +191,8 @@ def measure_lambda_gate_gain(model, valid_tok, n_batches, batch, seq, device,
     _selftest_fd_curvature()
 
     gate_params = []
-    for l in model.layers:
-        agp = getattr(l, "attn_gate_proj", None)
+    for layer in model.layers:
+        agp = getattr(layer, "attn_gate_proj", None)
         if agp is not None:
             gate_params.append(agp.weight)
             if agp.bias is not None:
@@ -195,25 +206,35 @@ def measure_lambda_gate_gain(model, valid_tok, n_batches, batch, seq, device,
     orig = [p.data.clone() for p in gate_params]
 
     rng = np.random.default_rng(seed=0)
-    fixed_starts = [rng.integers(0, len(valid_tok) - seq - 1, size=(batch,))
-                    for _ in range(n_batches)]
+    fixed_starts = [
+        rng.integers(0, len(valid_tok) - seq - 1, size=(batch,))
+        for _ in range(n_batches)
+    ]
 
     def L_at(alpha):
         for p, o in zip(gate_params, orig):
             p.data.copy_(alpha * o)
-        return _eval_loss_on_fixed_batches(model, valid_tok, fixed_starts,
-                                           batch, seq, device)
+        return _eval_loss_on_fixed_batches(
+            model, valid_tok, fixed_starts, batch, seq, device
+        )
 
     a, h = 1.0, eps
-    Lm2, Lm1, L0, Lp1, Lp2 = (L_at(a - 2 * h), L_at(a - h), L_at(a),
-                              L_at(a + h), L_at(a + 2 * h))
+    Lm2, Lm1, L0, Lp1, Lp2 = (
+        L_at(a - 2 * h),
+        L_at(a - h),
+        L_at(a),
+        L_at(a + h),
+        L_at(a + 2 * h),
+    )
     for p, o in zip(gate_params, orig):  # restore exactly
         p.data.copy_(o)
 
     kappa = (-Lp2 + 16 * Lp1 - 30 * L0 + 16 * Lm1 - Lm2) / (12 * h * h)
-    print(f"  gate-gain curvature: L(1)={L0:.6f} "
-          f"stencil=[{Lm2:.6f},{Lm1:.6f},{L0:.6f},{Lp1:.6f},{Lp2:.6f}] "
-          f"lambda={kappa:.6e}")
+    print(
+        f"  gate-gain curvature: L(1)={L0:.6f} "
+        f"stencil=[{Lm2:.6f},{Lm1:.6f},{L0:.6f},{Lp1:.6f},{Lp2:.6f}] "
+        f"lambda={kappa:.6e}"
+    )
     return {
         "L0": float(L0),
         "lambda_gate_gain": float(kappa),
@@ -239,8 +260,12 @@ def main():
     ap.add_argument("--num_kv_heads", type=int, default=4)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--out_md", default=None)
-    ap.add_argument("--lambda_eps", type=float, default=1e-2,
-                    help="Finite-difference step size for lambda (default 1e-2 to escape bf16 noise).")
+    ap.add_argument(
+        "--lambda_eps",
+        type=float,
+        default=1e-2,
+        help="Finite-difference step size for lambda (default 1e-2 to escape bf16 noise).",
+    )
     args = ap.parse_args()
 
     seed_everything(args.seed)
@@ -248,10 +273,18 @@ def main():
     dtype = torch.bfloat16 if device.type == "cuda" else torch.float32
 
     cfg = TrainConfig(
-        variant=args.variant, n_layers=args.n_layers, dim=args.dim,
-        num_heads=args.num_heads, num_kv_heads=args.num_kv_heads,
-        seq_len=args.seq_len, batch_size=args.batch, grad_accum=1,
-        steps=1, lr=1e-3, warmup_steps=1, nsa_window=256,
+        variant=args.variant,
+        n_layers=args.n_layers,
+        dim=args.dim,
+        num_heads=args.num_heads,
+        num_kv_heads=args.num_kv_heads,
+        seq_len=args.seq_len,
+        batch_size=args.batch,
+        grad_accum=1,
+        steps=1,
+        lr=1e-3,
+        warmup_steps=1,
+        nsa_window=256,
     )
 
     valid_tok = np.load(f"{DATA_DIR}/valid_tokens.npy", mmap_mode="r")
@@ -263,21 +296,29 @@ def main():
     model.load_state_dict(state["model"])
     print(f"loaded {args.ckpt}")
 
-    L_star = estimate_L_star(model, valid_tok, args.n_batches, args.batch,
-                             args.seq_len, device)
+    L_star = estimate_L_star(
+        model, valid_tok, args.n_batches, args.batch, args.seq_len, device
+    )
     print(f"L(theta_*) = {L_star:.4f}  ppl = {math.exp(L_star):.2f}")
 
-    sigma_C = measure_sigma_C(model, valid_tok, args.n_batches, args.batch,
-                              args.seq_len, device)
+    sigma_C = measure_sigma_C(
+        model, valid_tok, args.n_batches, args.batch, args.seq_len, device
+    )
     print(f"sigma_C per layer: {sigma_C}")
 
-    gate = measure_gate_stats(model, valid_tok, args.n_batches, args.batch,
-                              args.seq_len, device)
+    gate = measure_gate_stats(
+        model, valid_tok, args.n_batches, args.batch, args.seq_len, device
+    )
     print(f"gate stats per layer: {gate}")
 
     print("\nMeasuring lambda via fp32 gate-gain curvature (5-point FD)...")
     lambda_data = measure_lambda_gate_gain(
-        model, valid_tok, args.n_batches, args.batch, args.seq_len, device,
+        model,
+        valid_tok,
+        args.n_batches,
+        args.batch,
+        args.seq_len,
+        device,
         eps=getattr(args, "lambda_eps", 1e-2),
     )
     if lambda_data is None:
@@ -286,31 +327,40 @@ def main():
         print(f"lambda_gate_gain = {lambda_data['lambda_gate_gain']:.6e}")
 
     if not args.out_md:
-        out_md = Path(f"/opt/docker/LLM/HSPMN/results/phase3_constants_"
-                      f"{args.variant}_2026-05-12.md")
+        out_md = Path(
+            f"/opt/docker/LLM/HSPMN/results/phase3_constants_"
+            f"{args.variant}_2026-05-12.md"
+        )
     else:
         out_md = Path(args.out_md)
-    lines = [f"# Phase 3 Empirical Constants - {args.variant} (2026-05-12)",
-             "",
-             f"**Checkpoint:** `{args.ckpt}`.",
-             f"**Validation batches:** {args.n_batches} x {args.batch} x {args.seq_len}.",
-             "",
-             f"## Loss",
-             "",
-             f"- L(theta_*) = {L_star:.4f}  (PPL {math.exp(L_star):.2f})",
-             "",
-             "## Per-layer constants",
-             "",
-             "| Layer | sigma_C (mean ||C||) | p | gamma | gate.mean | gate.std |",
-             "|---|---|---|---|---|---|"]
+    lines = [
+        f"# Phase 3 Empirical Constants - {args.variant} (2026-05-12)",
+        "",
+        f"**Checkpoint:** `{args.ckpt}`.",
+        f"**Validation batches:** {args.n_batches} x {args.batch} x {args.seq_len}.",
+        "",
+        "## Loss",
+        "",
+        f"- L(theta_*) = {L_star:.4f}  (PPL {math.exp(L_star):.2f})",
+        "",
+        "## Per-layer constants",
+        "",
+        "| Layer | sigma_C (mean ||C||) | p | gamma | gate.mean | gate.std |",
+        "|---|---|---|---|---|---|",
+    ]
     layers = sorted(set(sigma_C) | set(gate))
     for layer_idx in layers:
         s = sigma_C.get(layer_idx, "-")
         s_str = f"{s:.3f}" if isinstance(s, float) else "-"
         g = gate.get(layer_idx)
         if g:
-            p = g["p"]; gm = g["gate_mean"]; gs = g["gate_std"]; gma = g["gamma"]
-            lines.append(f"| {layer_idx} | {s_str} | {p:.3f} | {gma:.3f} | {gm:.3f} | {gs:.3f} |")
+            p = g["p"]
+            gm = g["gate_mean"]
+            gs = g["gate_std"]
+            gma = g["gamma"]
+            lines.append(
+                f"| {layer_idx} | {s_str} | {p:.3f} | {gma:.3f} | {gm:.3f} | {gs:.3f} |"
+            )
         else:
             lines.append(f"| {layer_idx} | {s_str} | - | - | - | - |")
     lines.append("")
@@ -320,15 +370,22 @@ def main():
         gamma_avg = float(np.mean([g["gamma"] for g in gate.values()]))
         if lambda_data is not None:
             lambda_used = lambda_data["lambda_gate_gain"]
-            lambda_src = (f"gate-gain curvature, {lambda_data['method']} "
-                          f"(eps={lambda_data['eps']})")
+            lambda_src = (
+                f"gate-gain curvature, {lambda_data['method']} "
+                f"(eps={lambda_data['eps']})"
+            )
         else:
             lambda_used = 0.1
             lambda_src = "placeholder (no gate; gate-gain curvature disabled)"
-        rho_lb = 1.0 + (lambda_used * sigma_C_avg**2
-                        * p_avg * (1 - p_avg) * gamma_avg**2
-                        / max(2.0 * L_star, 1e-6))
-        lines.append(f"## Bound estimate")
+        rho_lb = 1.0 + (
+            lambda_used
+            * sigma_C_avg**2
+            * p_avg
+            * (1 - p_avg)
+            * gamma_avg**2
+            / max(2.0 * L_star, 1e-6)
+        )
+        lines.append("## Bound estimate")
         lines.append("")
         lines.append(f"- sigma_C (avg) = {sigma_C_avg:.4f}")
         lines.append(f"- p (avg) = {p_avg:.4f}")
@@ -340,19 +397,25 @@ def main():
         if lambda_data is not None:
             lines.append("## Lambda gate-gain curvature details")
             lines.append("")
-            lines.append(f"- method: {lambda_data['method']} (eps={lambda_data['eps']})")
+            lines.append(
+                f"- method: {lambda_data['method']} (eps={lambda_data['eps']})"
+            )
             sten = lambda_data["stencil"]
-            lines.append(f"- 5-point stencil L(1-2h..1+2h): "
-                         f"{', '.join(f'{x:.6f}' for x in sten)}")
+            lines.append(
+                f"- 5-point stencil L(1-2h..1+2h): "
+                f"{', '.join(f'{x:.6f}' for x in sten)}"
+            )
             lines.append(f"- lambda_gate_gain = {lambda_data['lambda_gate_gain']:.6e}")
             lines.append("")
-            lines.append("**Interpretation:** lambda is the curvature of the loss "
-                         "along the gate-action axis (uniform scaling of the gate "
-                         "logit by a scalar alpha at alpha=1), measured in fp32 so "
-                         "the difference is above bf16 rounding. This is the "
-                         "directional curvature the absorption-resistance bound "
-                         "refers to, not the smallest global Hessian eigenvalue. The "
-                         "estimator is self-tested on f(x)=x^2 (kappa=2.0) before use.")
+            lines.append(
+                "**Interpretation:** lambda is the curvature of the loss "
+                "along the gate-action axis (uniform scaling of the gate "
+                "logit by a scalar alpha at alpha=1), measured in fp32 so "
+                "the difference is above bf16 rounding. This is the "
+                "directional curvature the absorption-resistance bound "
+                "refers to, not the smallest global Hessian eigenvalue. The "
+                "estimator is self-tested on f(x)=x^2 (kappa=2.0) before use."
+            )
     out_md.write_text("\n".join(lines))
     print(f"Wrote {out_md}")
 

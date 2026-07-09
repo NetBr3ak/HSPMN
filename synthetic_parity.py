@@ -12,8 +12,8 @@ Format per example:
 At a fraction `p_query` of positions chosen at random, b_t is replaced by 2
 (the cue) and the label at that position becomes XOR of all preceding bits.
 """
+
 from typing import Tuple
-import math
 
 import torch
 
@@ -21,13 +21,14 @@ import torch
 VOCAB_PARITY = 3  # 0, 1, 2 (cue)
 
 
-def build_parity_batch(B: int, length: int, p_query: float = 0.1,
-                       device: str = "cpu", seed: int = 42) -> Tuple[torch.Tensor, torch.Tensor]:
+def build_parity_batch(
+    B: int, length: int, p_query: float = 0.1, device: str = "cpu", seed: int = 42
+) -> Tuple[torch.Tensor, torch.Tensor]:
     """Return (ids, labels). At cue positions (token=2), label is parity of
     all bit positions strictly before this one. Other positions: label = -100.
     """
     gen = torch.Generator(device="cpu").manual_seed(seed)
-    bits = torch.randint(0, 2, (B, length), generator=gen)             # 0 or 1
+    bits = torch.randint(0, 2, (B, length), generator=gen)  # 0 or 1
     cue_mask = torch.rand(B, length, generator=gen) < p_query
     cue_mask[:, 0] = False  # no cue at t=0 (no preceding bits)
 
@@ -36,7 +37,7 @@ def build_parity_batch(B: int, length: int, p_query: float = 0.1,
     bits_for_parity = bits.clone()
     bits_for_parity[cue_mask] = 0
     # Parity at position t = XOR of bits_for_parity[:, :t]
-    cum = bits_for_parity.cumsum(dim=1) % 2          # parity AT position t INCLUSIVE
+    cum = bits_for_parity.cumsum(dim=1) % 2  # parity AT position t INCLUSIVE
     # Parity STRICTLY BEFORE position t:
     parity_before = torch.zeros(B, length, dtype=torch.long)
     parity_before[:, 1:] = cum[:, :-1]
@@ -53,9 +54,14 @@ def build_parity_batch(B: int, length: int, p_query: float = 0.1,
 
 
 @torch.no_grad()
-def evaluate_parity(model, length: int, p_query: float = 0.1,
-                    n_examples: int = 256, device: str = "cuda",
-                    batch_size: int = 32) -> dict:
+def evaluate_parity(
+    model,
+    length: int,
+    p_query: float = 0.1,
+    n_examples: int = 256,
+    device: str = "cuda",
+    batch_size: int = 32,
+) -> dict:
     """Return {'accuracy': float, 'loss': float} on parity cue positions."""
     model.train(False)
     correct = 0
@@ -63,8 +69,9 @@ def evaluate_parity(model, length: int, p_query: float = 0.1,
     losses = []
     for start in range(0, n_examples, batch_size):
         bs = min(batch_size, n_examples - start)
-        ids, labels = build_parity_batch(bs, length, p_query=p_query,
-                                         device=device, seed=2000 + start)
+        ids, labels = build_parity_batch(
+            bs, length, p_query=p_query, device=device, seed=2000 + start
+        )
         out = model(ids, labels=labels)
         logits = out["logits"]
         # Predict at the cue positions themselves (label is at that position;
@@ -73,7 +80,7 @@ def evaluate_parity(model, length: int, p_query: float = 0.1,
         # but only the parity classes (0 or 1) matter.
         # Use shift form: logits[:, :-1] predicts ids[:, 1:].
         # Labels[:, 1:] != -100 marks cue positions. So target uses labels[:, 1:].
-        pred = logits[:, :-1, :2].argmax(dim=-1)   # restrict to {0, 1} for accuracy
+        pred = logits[:, :-1, :2].argmax(dim=-1)  # restrict to {0, 1} for accuracy
         target = labels[:, 1:]
         mask = target != -100
         correct += ((pred == target) & mask).sum().item()
@@ -83,7 +90,8 @@ def evaluate_parity(model, length: int, p_query: float = 0.1,
     return {
         "accuracy": correct / max(1, total),
         "loss": sum(losses) / max(1, len(losses)),
-        "n_correct": correct, "n_total": total,
+        "n_correct": correct,
+        "n_total": total,
     }
 
 
