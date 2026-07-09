@@ -13,6 +13,7 @@ MAIN FILE (arXiv compiles this): HSPMN_v5_draft.tex
     - fig_gate_null_350m.pdf             (learned vs random gate @350M)
     - fig_mi_threshold.pdf               (gate MI vs full-benefit threshold)
     - fig_gate_ceiling.pdf               (optimal-probe information ceiling)
+    - fig_v6_phase.pdf                   (routability phase diagram, Section 5)
     - figures/router_active_fraction_heatmap.pdf  (router modal collapse)
 
 Build (TeX Live): pdflatex HSPMN_v5_draft && pdflatex HSPMN_v5_draft

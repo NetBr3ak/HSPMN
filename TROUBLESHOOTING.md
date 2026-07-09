@@ -25,26 +25,27 @@ on `f(x)=x²` (κ=2.0) before use.
 **0.133** (non-vacuous, correctly signed vs the +1.66 % empirical A–M delta).
 See `results/phase3_constants_hymba-with-nsa-gated_2026-06-02.md`.
 
-## BUG-2 - dense 350M baseline never finished  ⏳ RELAUNCHED 2026-06-02
+## BUG-2 - dense 350M baseline never finished  ✅ FIXED 2026-06-02
 
 **Symptom.** `checkpoints_p4b_dense/` had only a log + csv, no
-`dense_p4_final.pt`; `finalize_v5_after_dense.py` crashed with
-`FileNotFoundError`; the v5 paper's headline Δ-vs-dense was blank.
+`dense_p4_final.pt`; the v5 paper's headline Δ-vs-dense was blank.
 
 **Root cause.** The original run was **killed externally at step 600/15000**
 (~16 min). `train_p4_350m.py` only writes `*_final.pt` after the loop completes
 (or on the internal `kill_clock` break) - an external SIGTERM hits neither path,
-so no final checkpoint. The orchestrator chain logged "Dense done" anyway
-(a silent failure), then finalize ran against a missing file.
+so no final checkpoint. The orchestrator logged "Dense done" anyway (a silent
+failure decided by exit status, not by artifact presence), then downstream
+aggregation ran against a missing file.
 
 **Fix.** Relaunched cleanly to full 15000 steps with `--kill_clock_h 10.0` and
 `nohup` (survives the session); writes intermediate `dense_p4_state.pt` every
-1000 steps (resumable) and `dense_p4_final.pt` on completion. ETA ≈ 6.5 h at
-42k tok/s. When it lands, run `finalize_v5_after_dense.py` to populate
-`paper/HSPMN_v5_final_numbers.tex`. **Hardening TODO:** add a SIGTERM handler in
-`train_p4_350m.py` that saves `*_final.pt` on signal, and make
-`orchestrate_v5_chain.sh` verify `*_final.pt` exists before logging "done"
-instead of trusting exit status.
+1000 steps (resumable) and `dense_p4_final.pt` on completion. Completed at
+seeds {42,1337,2026}, PPL 84.23/80.18/86.82 (mean 83.75 ± 2.73) - see
+`results/phase4_350m_analysis_2026-06-05.md` and Appendix "Dense 350M baseline
+details" in the paper. **Hardening applied:** `run_v5_queue.py` /
+`run_v5_queue2.py` (the current orchestrators) decide a job's success by
+artifact existence, never by process exit status - this is exactly the
+anti-pattern the bug above hit.
 
 ## Common issues
 

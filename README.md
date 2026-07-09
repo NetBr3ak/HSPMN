@@ -10,7 +10,9 @@ szymon.jendryczkos@gmail.com
 Research code for sub-2B hybrid language models (a linear-recurrent *reflexive*
 stream + a sparse-attention *contextual* stream) trained on a single RTX 5090
 (Blackwell, sm_120, 32 GB, PyTorch 2.10.0+cu128).
-Versions: v3 → v4 → **v5 (paper)** → **v6 (pre-registered programme, running)**.
+Versions: v3 → v4 → **v5 (this paper)**. The v6 routability programme is
+executed and reported *inside* this v5 paper as Contribution 5 / §5 — not a
+separate manuscript.
 
 **Paper**: *Nothing to Route On: A Measured Information Ceiling Explains
 Routing Absorption in Hybrid Mamba-Attention Language Models*
@@ -45,14 +47,16 @@ Routing Absorption in Hybrid Mamba-Attention Language Models*
 > v4 manuscript (separate, arXiv-ready): decoupled-QKV absorption-ratio 1.26× at
 > the 31M-equivalent diagnostic scale vs the >2.0× Aquino–Michaels threshold;
 > the v3.0 "3.32× speedup" claim is retracted (re-measured 0.95× of a compiled
-> cuDNN dense baseline). See `paper/HSPMN_v4_0.{tex,pdf}`.
+> cuDNN dense baseline). Reported for context only; the v4 manuscript itself
+> is a separate paper and its `HSPMN_v4_0.{tex,pdf}` sources are not part of
+> this release.
 
 ## Status
 
 | Item | State |
 |---|---|
-| 140M headline sweep (10 variants × 3 seeds) | ✅ done (`checkpoints_p2screen/`, `checkpoints_p2b/`) |
-| 350M: hymba / dense / gated / randgate × 3 seeds | ✅ done (`checkpoints_p4*`) |
+| 140M headline sweep (10 variants × 3 seeds) | ✅ done (`results/phase2_combined_140m_2026-05-12.md`) |
+| 350M: hymba / dense / gated / randgate × 3 seeds | ✅ done (`results/phase4_350m_analysis_2026-06-05.md`) |
 | Gate-channel theorem + MI + ceiling + sequence probes | ✅ done (paper §5–7) |
 | v5 paper | ✅ submission-ready (`paper/HSPMN_v5_draft.tex`) |
 | v6 routability programme (137 jobs) | ✅ done (`results/v6_routability_summary.md`) |
@@ -65,19 +69,21 @@ python3 train_v4.py --variant hymba-with-nsa --lr 1e-3 --seed 42   # a 140M run
 ```
 
 Full commands → **`REPRODUCE.md`**. Architecture & module map → **`ARCHITECTURE.md`**.
-Known pitfalls → **`TROUBLESHOOTING.md`**. Research trail →
-**`results/research_roadmap_2026-06-02.md`** and the dated reports in `results/`.
+Known pitfalls → **`TROUBLESHOOTING.md`**. Research trail → the dated reports in
+`results/`.
 
 ## Layout
 
 ```
 *.py            live code: blocks · LMs · trainers · analysis · diagnostics · evals · tests
-data/           wikitext-103 tokens, tokenizer, hellaswag_val.jsonl, mix_pi* (v6 corpora)
-checkpoints_*/  p2screen (140M table) · p2b (theorem constants) · p4* (350M) · v6 (running)
-paper/          LaTeX + build scripts (v4 arXiv-ready; v5 final)
-results/        dated logs, tables, theorem drafts, roadmap, v6 artifacts
-archive/        spent runs, legacy code, spent scripts (see archive/ARCHIVE_INDEX.md)
+paper/          LaTeX source (HSPMN_v5_draft.tex, final) + build scripts + figures
+results/        dated logs, tables, theorem drafts, v6 routability artifacts
 ```
+
+`data/` (tokenized corpora) and `checkpoints_*/` (trained weights) are not
+shipped in this release — regenerate with `tokenize_corpus.py` /
+`train_v4.py` / `train_p4_350m.py` per `REPRODUCE.md`. Every number in the
+paper traces to a static file already present under `results/`.
 
 Critical v5 path: `train_v4.py` → `hymba_with_nsa_lm` → `hymba_with_nsa_block`
 → {`gated_deltanet`, `nsa_attention`, `hspmn_v3_0`}; `utils_v3_0` is shared core.

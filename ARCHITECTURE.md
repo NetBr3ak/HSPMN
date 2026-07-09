@@ -104,22 +104,18 @@ per-layer `p ∈ {0,1}`. See `results/phase2_h1_router_diagnostic_2026-05-12.md`
   S=1024/B=8/ga=8 - large headroom for bigger batch or longer context.
 - No FlashAttention-3/4. Attention is `F.scaled_dot_product_attention` or the
   Triton kernel in `kernels_v3_0.py`. FP8/NVFP4 TMA paths are **not yet wired**
-  (see `kv_int8.py` for the INT8 KV-cache precursor; a Blackwell FP8 KV kernel is
-  a ranked systems bet in `results/research_roadmap_2026-06-02.md`).
+  (future work).
 
 ## Repository layout
 
 ```
 *.py (root)        live code - blocks, LMs, trainers, analysis, diagnostics, evals, tests
-data/              train_tokens.npy / valid_tokens.npy (wikitext-103), tokenizer, hellaswag_val.jsonl
-checkpoints_p2screen/  140M headline sweep (kept)
-checkpoints_p2b/       140M gated/randgate/asa sweep - theorem-constant source (kept)
-checkpoints_p4_350m/   350M hymba-with-nsa winner (PPL 87.38) (kept)
-checkpoints_p4b_dense/ 350M dense baseline (BUG-2 - relaunched 2026-06-02)
-paper/             LaTeX sources + build scripts (v4 done, v5 draft)
-results/           dated experiment logs, tables, theorem drafts, roadmap
-archive/           spent checkpoints, legacy code, spent scripts, vendored caveman-main
+paper/             LaTeX source (HSPMN_v5_draft.tex, final) + build scripts + figures
+results/           dated experiment logs, tables, theorem drafts, v6 routability artifacts
 ```
 
-See `REPRODUCE.md` for commands, `TROUBLESHOOTING.md` for known bugs,
-`archive/ARCHIVE_INDEX.md` for what was archived and how to restore it.
+`data/` (tokenized wikitext-103, tokenizer, hellaswag_val.jsonl, mix_pi* corpora)
+and `checkpoints_*/` (trained weights per variant/seed) are regenerated
+locally, not shipped in this release - see `REPRODUCE.md`.
+
+See `REPRODUCE.md` for commands, `TROUBLESHOOTING.md` for known bugs.
