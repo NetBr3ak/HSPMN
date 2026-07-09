@@ -21,10 +21,10 @@ python3 tokenize_corpus.py              # wikitext-103 → data/train_tokens.npy
 
 ## 2. Synthetic expressivity battery (≈30 min)
 
-```bash
-python3 run_p2_synthetics.py            # MQAR / Dyck-2 / parity across variants
-python3 aggregate_p2_synthetics.py      # → results/phase2_synthetics_table_*.md
-```
+MQAR / Dyck-2 / parity per variant, using `synthetic_mqar.py` /
+`synthetic_dyck.py` / `synthetic_parity.py` via `train_synthetic.py`. The
+runner and aggregator that produced the committed
+`results/phase2_synthetics_table_2026-05-12.md` are not part of this release.
 
 ## 3. 140M headline sweep (the −3.39 % result; ≈30 GPU-h for the full 45 runs)
 
@@ -61,14 +61,12 @@ python3 train_p4_350m.py --variant dense --seed 42 \
 # Resumes automatically from checkpoints_p4b_dense/dense_p4_state.pt if interrupted.
 ```
 
-The full 350M sweep (hymba/dense/gated/randgate × 3 seeds, plus the
-gate-channel MI measurement per checkpoint) was driven overnight by two
-resumable, skip-if-done queue scripts rather than by hand:
+The decisive gated-vs-randgate 3-seed comparison at 350M was driven overnight
+by a resumable, skip-if-done queue script rather than by hand:
 
 ```bash
-nohup python3 run_v5_queue.py > results/v5_queue.out 2>&1 &   # queue 1: base sweep
-python3 run_v5_queue.py --list                                 # progress / done state
-nohup python3 run_v5_queue2.py > results/v5_queue2.out 2>&1 &  # queue 2: gated-vs-randgate at 350M
+nohup python3 run_v5_queue2.py > results/v5_queue2.out 2>&1 &
+python3 run_v5_queue2.py --list         # progress / done state
 ```
 
 Output already committed: `results/phase4_350m_analysis_2026-06-05.md` (the
@@ -98,8 +96,12 @@ python3 profile_flops_140m.py    # FLOPs / arithmetic-intensity table
 
 ```bash
 python3 diagnose_v4_router.py --ckpt checkpoints_p2screen/v4-gdn-nsa_lr1e-3_seed42/...final.pt
-python3 aggregate_router_diagnostics.py && python3 plot_router_diagnostics.py
 ```
+
+Aggregation into `results/router_diagnostics_summary_2026-05-14.md` /
+`.csv`, and plotting `figures/router_active_fraction_heatmap.pdf` from that
+CSV, used scripts not included in this release; both outputs are already
+committed.
 
 ## 8. Paper
 

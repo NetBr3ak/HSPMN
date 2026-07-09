@@ -42,10 +42,9 @@ aggregation ran against a missing file.
 1000 steps (resumable) and `dense_p4_final.pt` on completion. Completed at
 seeds {42,1337,2026}, PPL 84.23/80.18/86.82 (mean 83.75 ± 2.73) - see
 `results/phase4_350m_analysis_2026-06-05.md` and Appendix "Dense 350M baseline
-details" in the paper. **Hardening applied:** `run_v5_queue.py` /
-`run_v5_queue2.py` (the current orchestrators) decide a job's success by
-artifact existence, never by process exit status - this is exactly the
-anti-pattern the bug above hit.
+details" in the paper. **Hardening applied:** `run_v5_queue2.py` (the current
+orchestrator) decides a job's success by artifact existence, never by process
+exit status - this is exactly the anti-pattern the bug above hit.
 
 ## Common issues
 
