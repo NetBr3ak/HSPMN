@@ -41,7 +41,6 @@ Paper in one paragraph:
 All numbers reproduce from the accompanying code; the Reproduction
 appendix maps each table to its source log or checkpoint.
 
-Note: theorem_gate_channel.tex (an earlier standalone theorem section) is
-no longer \input by the main file; its corrected content is inlined in
-Section 6 of the paper. The file may remain in the repo for history but
-is NOT part of the arXiv package.
+Note: an earlier draft had the gate-channel theorem as a standalone
+theorem_gate_channel.tex section; it is not part of this release. Its
+corrected content is inlined directly in Section 6 of the paper.

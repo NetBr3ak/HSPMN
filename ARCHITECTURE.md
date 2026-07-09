@@ -43,18 +43,19 @@ utils_v3_0.py           universal: logging, seeding, device, TrainConfig helpers
 
 | in-deg | module | role | v5 status |
 |---|---|---|---|
-| 28 | `utils_v3_0` | logging, seed, device, config | **shared core** |
-| 10 | `hspmn_v3_0` | RMSNorm, RoPE, SwiGLU, sinks, TopKRouter | **shared core** |
-| 9  | `train_v4` | universal trainer + `build_model` dispatch | **core** |
-| 7  | `hspmn_v4_0` | v4 block-fusion model | baseline (retired arch) |
+| 21 | `utils_v3_0` | logging, seed, device, config | **shared core** |
+| 11 | `train_v4` | universal trainer + `build_model` dispatch | **core** |
+| 4  | `hspmn_v3_0` | RMSNorm, RoPE, SwiGLU, sinks, TopKRouter | **shared core** |
+| 4  | `hspmn_v4_0` | v4 block-fusion model | baseline (retired arch) |
 | 4  | `gated_deltanet` | reflexive linear-recurrent stream | **core (v5)** |
 | 3  | `nsa_attention` | NSA / ASA contextual stream | **core (v5)** |
-| 3  | `router_v4_0` | ReMoE router (ALF-LB, z-loss) | baseline (v4 only) |
 | 3  | `kernels_v3_0` | Triton SQSK sparse attention | v3/v4 path |
 | 3  | `hymba_with_nsa_lm` | v5 LM wrapper | **core (v5)** |
-| 3  | `hspmn_v4_lm` | v4 LM wrapper | baseline |
+| 2  | `router_v4_0` | ReMoE router (ALF-LB, z-loss) | baseline (v4 only) |
+| 2  | `hspmn_v4_lm` | v4 LM wrapper | baseline |
 | 2  | `rwkv7_block`, `mamba3_block` | alt reflexive primitives | bench / ablation |
-| 2  | `hymba_with_nsa_block`, `hymba_lm` | v5 block, Hymba LM | **core (v5)** / baseline |
+| 2  | `hymba_lm` | Hymba (no-NSA) LM wrapper | baseline |
+| 1  | `hymba_with_nsa_block` | v5 block (head fusion) | **core (v5)** |
 
 ## Variants `train_v4.py --variant` accepts
 

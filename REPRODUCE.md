@@ -80,9 +80,10 @@ python3 measure_theorem_constants.py --variant hymba-with-nsa-gated \
   --ckpt checkpoints_p2b/hymba-with-nsa-gated_lr1e-3_seed42/hymba-with-nsa-gated_final.pt \
   --n_batches 4 --batch 2 --seq_len 512 \
   --n_layers 12 --dim 768 --num_heads 12 --num_kv_heads 4 \
-  --out_md results/phase3_constants_hymba-with-nsa-gated_$(date +%F).md
+  --out_md results/theorem_constants_$(date +%F).md
 # Reports σ_C, p, γ, λ (gate-gain curvature, fp32) and ρ_LB-1.
-# Measured 2026-06-02: λ=0.186, ρ_LB-1 ≈ 0.133 (non-vacuous).
+# Measured 2026-06-02: λ=0.186, ρ_LB-1 ≈ 0.133 (non-vacuous) -
+# see the committed results/theorem_empirics_2026-06-02.md.
 ```
 
 ## 6. Downstream + long-context evals
