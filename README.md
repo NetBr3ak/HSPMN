@@ -4,8 +4,7 @@
 ![PyTorch](https://img.shields.io/badge/pytorch-2.10%2B%2Bcu128-orange)
 ![Hardware](https://img.shields.io/badge/GPU-RTX_5090_(sm__120)-green)
 
-**Author**: Szymon Jędryczko - Tenzan Logic / Independent Researcher, Kraków ·
-szymon.jendryczkos@gmail.com
+**Author**: Szymon Jędryczko - Tenzan Logic / Independent Researcher, Kraków
 
 Research code for sub-2B hybrid language models (a linear-recurrent *reflexive*
 stream + a sparse-attention *contextual* stream) trained on a single RTX 5090
