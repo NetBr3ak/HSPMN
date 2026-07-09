@@ -23,7 +23,7 @@ on `f(x)=x²` (κ=2.0) before use.
 
 **Result.** λ = **0.186** on `hymba-with-nsa-gated` 140M seed42; ρ_LB−1 ≈
 **0.133** (non-vacuous, correctly signed vs the +1.66 % empirical A–M delta).
-See `results/phase3_constants_hymba-with-nsa-gated_2026-06-02.md`.
+See `results/theorem_empirics_2026-06-02.md`.
 
 ## BUG-2 - dense 350M baseline never finished  ✅ FIXED 2026-06-02
 

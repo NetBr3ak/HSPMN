@@ -3,8 +3,7 @@
 The absorption-resistance theorem's headline constant lambda (loss curvature) is
 hard to measure and conceptually fragile (a neural-net Hessian's smallest
 eigenvalue is ~0/negative; see BUG-1 in TROUBLESHOOTING.md). This script measures
-the *information-theoretic* alternative proposed in
-`results/research_roadmap_2026-06-02.md`:
+the *information-theoretic* alternative:
 
     Treat the per-token gate g_t = sigmoid(W h_t) as a noisy channel deciding
     "route to the contextual (NSA) stream". Measure its mutual information with a

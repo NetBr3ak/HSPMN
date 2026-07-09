@@ -96,7 +96,7 @@ LR/seed variance. Cause: the v4 ReMoE router **modally collapsed** - 7 of 12
 layers had fully dead gates, 2 saturated; ALF-LB held the *batch-averaged*
 active fraction near target while per-layer routing was destroyed. The v5
 absorption-resistance bound predicts exactly this: `ρ−1 ∝ p(1−p)γ²` → 0 when
-per-layer `p ∈ {0,1}`. See `results/phase2_h1_router_diagnostic_2026-05-12.md`.
+per-layer `p ∈ {0,1}`. See `results/router_diagnostics_summary_2026-05-14.md`.
 
 ## Hardware / sm_120 notes
 

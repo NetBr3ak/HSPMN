@@ -11,7 +11,8 @@ batch, log per-layer gate statistics:
     - gate.mean() conditional on gate>0
     - L1 of gate distribution
 
-Output: results/phase2_h1_router_diagnostic_2026-05-12.md
+Per-checkpoint output feeds the aggregate in
+results/router_diagnostics_summary_2026-05-14.md.
 """
 
 import argparse

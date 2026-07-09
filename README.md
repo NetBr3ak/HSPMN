@@ -11,7 +11,7 @@ Research code for sub-2B hybrid language models (a linear-recurrent *reflexive*
 stream + a sparse-attention *contextual* stream) trained on a single RTX 5090
 (Blackwell, sm_120, 32 GB, PyTorch 2.10.0+cu128).
 Versions: v3 → v4 → **v5 (this paper)**. The v6 routability programme is
-executed and reported *inside* this v5 paper as Contribution 5 / §5 — not a
+executed and reported *inside* this v5 paper as Contribution 5 / §5, not a
 separate manuscript.
 
 **Paper**: *Nothing to Route On: A Measured Information Ceiling Explains
@@ -81,7 +81,7 @@ results/        dated logs, tables, theorem drafts, v6 routability artifacts
 ```
 
 `data/` (tokenized corpora) and `checkpoints_*/` (trained weights) are not
-shipped in this release — regenerate with `tokenize_corpus.py` /
+shipped in this release: regenerate with `tokenize_corpus.py` /
 `train_v4.py` / `train_p4_350m.py` per `REPRODUCE.md`. Every number in the
 paper traces to a static file already present under `results/`.
 

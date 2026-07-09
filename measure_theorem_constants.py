@@ -1,6 +1,6 @@
 """Measure the absorption-resistance theorem constants on a trained model.
 
-Per `results/phase3_theorem_draft_2026-05-12.md`:
+Per the absorption-resistance bound (paper/HSPMN_v5_draft.tex, Section 6):
 
   rho >= 1 + (lambda * sigma_C^2 * p * (1-p) * gamma^2)
               / (2 * L(theta_*)) * (1 - O(delta, sigma_g))

@@ -74,5 +74,4 @@ gated > randgate correctly; the magnitude motivates the 350M / 3-seed test*, not
 - Run `measure_gate_channel_mi.py` on `hymba-with-nsa-pcgate` and
   `hymba-with-asa` (their checkpoints are in archive/checkpoints/p2c, p2d - restore first).
 - Train a 350M gated variant and re-measure: does I(g; s) grow with scale?
-- Draft Theorem 1' (gate-as-channel) formally in `paper/`. See
-  `research_roadmap_2026-06-02.md`.
+- Draft Theorem 1' (gate-as-channel) formally in `paper/`.

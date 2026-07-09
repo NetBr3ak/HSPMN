@@ -6,8 +6,9 @@ LEARNED GATE beats the Aquino-Michaels RANDOM GATE at 350M with 3-seed CIs --
 the absorption-resistance thesis at scale. queue-1 left us with gated s42 only
 and no randgate-350M control. This queue fills both.
 
-Same robust contract as run_v5_queue.py (verify-by-artifact, skip-if-done,
-continue-on-fail). GPU is free; launch immediately (no --wait-pid).
+Same robust contract as its predecessor queue (verify-by-artifact,
+skip-if-done, continue-on-fail). GPU is free; launch immediately (no
+--wait-pid).
 
     nohup python3 run_v5_queue2.py > results/v5_queue2.out 2>&1 &
     python3 run_v5_queue2.py --list

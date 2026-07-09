@@ -3,10 +3,6 @@
 # captured from the live RTX 5090 (sm_120) box via importlib.metadata, NOT an
 # aspirational target. Earlier drafts of this file pinned torch 2.12 / mamba-ssm
 # 3.0 which were never the runtime - corrected here.
-#
-# Install via local proxy if pypi unreachable:
-#   pip install --user --break-system-packages --proxy http://127.0.0.1:3129 \
-#     --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements.txt
 
 # Core (RTX 5090 sm_120 / Blackwell; no FlashAttention-3/4)
 torch==2.10.0          # actual: 2.10.0+cu128 (CUDA 12.8 wheel)

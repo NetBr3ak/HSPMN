@@ -237,9 +237,7 @@ def main():
     )
     ap.add_argument("--steps", type=int, default=2000)
     ap.add_argument("--lr", type=float, default=3e-4)
-    ap.add_argument(
-        "--out", default="/opt/docker/LLM/HSPMN/results/phase1_synthetics.json"
-    )
+    ap.add_argument("--out", default="results/phase1_synthetics.json")
     args = ap.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
