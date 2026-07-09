@@ -1,0 +1,92 @@
+[
+  {
+    "variant": "dense",
+    "n_params": 152711424,
+    "n_params_M": 152.711424,
+    "flops_fwd": 233666248704,
+    "flops_per_token_fwd": 228189696.0,
+    "kaplan_6p_per_token": 916268544,
+    "kaplan_2p_per_token_fwd": 305422848
+  },
+  {
+    "variant": "hymba",
+    "n_params": 154245264,
+    "n_params_M": 154.245264,
+    "flops_fwd": 353895972864,
+    "flops_per_token_fwd": 345601536.0,
+    "kaplan_6p_per_token": 925471584,
+    "kaplan_2p_per_token_fwd": 308490528
+  },
+  {
+    "variant": "hymba-with-nsa",
+    "n_params": 154328424,
+    "n_params_M": 154.328424,
+    "flops_fwd": 374582280192,
+    "flops_per_token_fwd": 365803008.0,
+    "kaplan_6p_per_token": 925970544,
+    "kaplan_2p_per_token_fwd": 308656848
+  },
+  {
+    "variant": "hymba-with-nsa-gated",
+    "n_params": 154383792,
+    "n_params_M": 154.383792,
+    "flops_fwd": 374695526400,
+    "flops_per_token_fwd": 365913600.0,
+    "kaplan_6p_per_token": 926302752,
+    "kaplan_2p_per_token_fwd": 308767584
+  },
+  {
+    "variant": "hymba-with-nsa-randgate",
+    "n_params": 154383792,
+    "n_params_M": 154.383792,
+    "flops_fwd": 374695526400,
+    "flops_per_token_fwd": 365913600.0,
+    "kaplan_6p_per_token": 926302752,
+    "kaplan_2p_per_token_fwd": 308767584
+  },
+  {
+    "variant": "hymba-with-nsa-pcgate",
+    "n_params": 154328424,
+    "n_params_M": 154.328424,
+    "flops_fwd": 374582280192,
+    "flops_per_token_fwd": 365803008.0,
+    "kaplan_6p_per_token": 925970544,
+    "kaplan_2p_per_token_fwd": 308656848
+  },
+  {
+    "variant": "hymba-with-nsa-select",
+    "n_params": 154328424,
+    "n_params_M": 154.328424,
+    "flops_fwd": 377300189184,
+    "flops_per_token_fwd": 368457216.0,
+    "kaplan_6p_per_token": 925970544,
+    "kaplan_2p_per_token_fwd": 308656848
+  },
+  {
+    "variant": "hymba-with-asa",
+    "n_params": 154272984,
+    "n_params_M": 154.272984,
+    "flops_fwd": 363616272384,
+    "flops_per_token_fwd": 355094016.0,
+    "kaplan_6p_per_token": 925637904,
+    "kaplan_2p_per_token_fwd": 308545968
+  },
+  {
+    "variant": "v4-gdn-nsa",
+    "n_params": 154711260,
+    "n_params_M": 154.71126,
+    "flops_fwd": 445870768128,
+    "flops_per_token_fwd": 435420672.0,
+    "kaplan_6p_per_token": 928267560,
+    "kaplan_2p_per_token_fwd": 309422520
+  },
+  {
+    "variant": "v4-rwkv7-nsa",
+    "n_params": 168912972,
+    "n_params_M": 168.912972,
+    "flops_fwd": 398835843072,
+    "flops_per_token_fwd": 389488128.0,
+    "kaplan_6p_per_token": 1013477832,
+    "kaplan_2p_per_token_fwd": 337825944
+  }
+]

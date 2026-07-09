@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this architecture or reference this work in your research, please cite it as below."
+authors:
+  - family-names: "Jędryczko"
+    given-names: "Szymon"
+title: "HSPMN: Hybrid Sparse-Predictive Matter Network"
+version: "3.0.0"
+date-released: "2026-03-07"
+url: "https://github.com/NetBr3ak/HSPMN"

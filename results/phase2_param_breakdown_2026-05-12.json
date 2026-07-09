@@ -1,0 +1,114 @@
+[
+  {
+    "variant": "dense",
+    "block_buckets": {
+      "norm1": 768,
+      "q_proj": 589824,
+      "k_proj": 196608,
+      "v_proj": 196608,
+      "o_proj": 589824,
+      "norm2": 768,
+      "gate": 1572864,
+      "up": 1572864,
+      "down": 1572864
+    },
+    "block_total": 6292992,
+    "n_layers": 12,
+    "embed": 38597376,
+    "lm_head": 38597376,
+    "total": 152711424
+  },
+  {
+    "variant": "hymba",
+    "block_buckets": {
+      "meta_tokens": 49152,
+      "norm": 768,
+      "q_proj": 589824,
+      "k_proj": 196608,
+      "v_proj": 196608,
+      "o_proj": 589824,
+      "ssm": 444300,
+      "ssm_in_proj": 294912,
+      "ssm_k_proj": 98304,
+      "ssm_v_proj": 98304,
+      "norm2": 768,
+      "gate_proj": 2359296,
+      "up_proj": 2359296,
+      "down_proj": 2359296
+    },
+    "block_total": 9637260,
+    "n_layers": 12,
+    "embed": 38597376,
+    "lm_head": 0,
+    "total": 154245264
+  },
+  {
+    "variant": "hymba-with-nsa",
+    "block_buckets": {
+      "meta_tokens": 49152,
+      "norm": 768,
+      "q_proj": 589824,
+      "k_proj": 196608,
+      "v_proj": 196608,
+      "o_proj": 589824,
+      "nsa": 6930,
+      "ssm": 444300,
+      "ssm_in_proj": 294912,
+      "ssm_k_proj": 98304,
+      "ssm_v_proj": 98304,
+      "norm2": 768,
+      "gate_proj": 2359296,
+      "up_proj": 2359296,
+      "down_proj": 2359296
+    },
+    "block_total": 9644190,
+    "n_layers": 12,
+    "embed": 38597376,
+    "lm_head": 0,
+    "total": 154328424
+  },
+  {
+    "variant": "v4-gdn-nsa",
+    "block_buckets": {
+      "sink_tokens": 6144,
+      "router": 769,
+      "norm": 768,
+      "q_proj_refl": 589824,
+      "k_proj_refl": 196608,
+      "v_proj_refl": 196608,
+      "q_proj_ctx": 589824,
+      "k_proj_ctx": 196608,
+      "v_proj_ctx": 196608,
+      "o_proj": 589824,
+      "reflexive": 7084824,
+      "nsa": 27684
+    },
+    "block_total": 9676093,
+    "n_layers": 12,
+    "embed": 38597376,
+    "lm_head": 0,
+    "total": 154711260
+  },
+  {
+    "variant": "v4-rwkv7-nsa",
+    "block_buckets": {
+      "sink_tokens": 6144,
+      "router": 769,
+      "norm": 768,
+      "q_proj_refl": 589824,
+      "k_proj_refl": 196608,
+      "v_proj_refl": 196608,
+      "q_proj_ctx": 589824,
+      "k_proj_ctx": 196608,
+      "v_proj_ctx": 196608,
+      "o_proj": 589824,
+      "reflexive": 8268300,
+      "nsa": 27684
+    },
+    "block_total": 10859569,
+    "n_layers": 12,
+    "embed": 38597376,
+    "lm_head": 0,
+    "total": 168912972
+  }
+]

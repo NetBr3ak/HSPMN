@@ -1,0 +1,137 @@
+{
+  "variant": "v4-rwkv7-nsa",
+  "lr_tag": "1e-3",
+  "seed": 2026,
+  "n_layers": 12,
+  "n_batches": 8,
+  "mean_active_fraction": 0.143951416015625,
+  "min_active_fraction": 0.0,
+  "max_active_fraction": 0.965118408203125,
+  "h_route": 0.07162143973012765,
+  "dead_layers": 10,
+  "near_dead_layers": 10,
+  "saturated_layers": 1,
+  "mean_gate_conditional_mean": 0.17787551356013864,
+  "rows": [
+    {
+      "gate_mean": 0.04950940189883113,
+      "gate_std": 0.04650960257276893,
+      "active_fraction": 0.762298583984375,
+      "gate_conditional_mean": 0.06491949828341603,
+      "gate_l1": 0.04950940189883113,
+      "std_active_fraction": 0.015959934778220657,
+      "layer": 0,
+      "h_route_layer": 0.7247978113591671
+    },
+    {
+      "gate_mean": 1.99729323387146,
+      "gate_std": 0.7068037316203117,
+      "active_fraction": 0.965118408203125,
+      "gate_conditional_mean": 2.0695866644382477,
+      "gate_l1": 1.99729323387146,
+      "std_active_fraction": 0.007423679232891932,
+      "layer": 1,
+      "h_route_layer": 0.13465946540236473
+    },
+    {
+      "gate_mean": 0.0,
+      "gate_std": 0.0,
+      "active_fraction": 0.0,
+      "gate_conditional_mean": 0.0,
+      "gate_l1": 0.0,
+      "std_active_fraction": 0.0,
+      "layer": 2,
+      "h_route_layer": 0.0
+    },
+    {
+      "gate_mean": 0.0,
+      "gate_std": 0.0,
+      "active_fraction": 0.0,
+      "gate_conditional_mean": 0.0,
+      "gate_l1": 0.0,
+      "std_active_fraction": 0.0,
+      "layer": 3,
+      "h_route_layer": 0.0
+    },
+    {
+      "gate_mean": 0.0,
+      "gate_std": 0.0,
+      "active_fraction": 0.0,
+      "gate_conditional_mean": 0.0,
+      "gate_l1": 0.0,
+      "std_active_fraction": 0.0,
+      "layer": 4,
+      "h_route_layer": 0.0
+    },
+    {
+      "gate_mean": 0.0,
+      "gate_std": 0.0,
+      "active_fraction": 0.0,
+      "gate_conditional_mean": 0.0,
+      "gate_l1": 0.0,
+      "std_active_fraction": 0.0,
+      "layer": 5,
+      "h_route_layer": 0.0
+    },
+    {
+      "gate_mean": 0.0,
+      "gate_std": 0.0,
+      "active_fraction": 0.0,
+      "gate_conditional_mean": 0.0,
+      "gate_l1": 0.0,
+      "std_active_fraction": 0.0,
+      "layer": 6,
+      "h_route_layer": 0.0
+    },
+    {
+      "gate_mean": 0.0,
+      "gate_std": 0.0,
+      "active_fraction": 0.0,
+      "gate_conditional_mean": 0.0,
+      "gate_l1": 0.0,
+      "std_active_fraction": 0.0,
+      "layer": 7,
+      "h_route_layer": 0.0
+    },
+    {
+      "gate_mean": 0.0,
+      "gate_std": 0.0,
+      "active_fraction": 0.0,
+      "gate_conditional_mean": 0.0,
+      "gate_l1": 0.0,
+      "std_active_fraction": 0.0,
+      "layer": 8,
+      "h_route_layer": 0.0
+    },
+    {
+      "gate_mean": 0.0,
+      "gate_std": 0.0,
+      "active_fraction": 0.0,
+      "gate_conditional_mean": 0.0,
+      "gate_l1": 0.0,
+      "std_active_fraction": 0.0,
+      "layer": 9,
+      "h_route_layer": 0.0
+    },
+    {
+      "gate_mean": 0.0,
+      "gate_std": 0.0,
+      "active_fraction": 0.0,
+      "gate_conditional_mean": 0.0,
+      "gate_l1": 0.0,
+      "std_active_fraction": 0.0,
+      "layer": 10,
+      "h_route_layer": 0.0
+    },
+    {
+      "gate_mean": 0.0,
+      "gate_std": 0.0,
+      "active_fraction": 0.0,
+      "gate_conditional_mean": 0.0,
+      "gate_l1": 0.0,
+      "std_active_fraction": 0.0,
+      "layer": 11,
+      "h_route_layer": 0.0
+    }
+  ]
+}

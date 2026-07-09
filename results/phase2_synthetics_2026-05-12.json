@@ -1,0 +1,130 @@
+[
+  {
+    "accuracy": 0.003662109375,
+    "loss": 8.115234375,
+    "n_correct": 30,
+    "n_total": 8192,
+    "params_M": 2.182568,
+    "variant": "hymba-with-nsa",
+    "task": "mqar",
+    "final_train_ce": 8.130625,
+    "wall_s": 89.45814418792725
+  },
+  {
+    "accuracy": 0.0023193359375,
+    "loss": 8.162109375,
+    "n_correct": 19,
+    "n_total": 8192,
+    "params_M": 2.1836,
+    "variant": "hymba-with-nsa-gated",
+    "task": "mqar",
+    "final_train_ce": 8.16,
+    "wall_s": 88.71000480651855
+  },
+  {
+    "accuracy": 0.000244140625,
+    "loss": 8.349609375,
+    "n_correct": 2,
+    "n_total": 8192,
+    "params_M": 2.1836,
+    "variant": "hymba-with-nsa-randgate",
+    "task": "mqar",
+    "final_train_ce": 8.35625,
+    "wall_s": 88.74158048629761
+  },
+  {
+    "accuracy": 0.0006103515625,
+    "loss": 8.345703125,
+    "n_correct": 5,
+    "n_total": 8192,
+    "params_M": 2.181528,
+    "variant": "hymba-with-asa",
+    "task": "mqar",
+    "final_train_ce": 8.354375,
+    "wall_s": 81.54685187339783
+  },
+  {
+    "loss": 0.984619140625,
+    "ppl": 2.6767922088492075,
+    "n_examples": 512,
+    "params_M": 1.134632,
+    "variant": "hymba-with-nsa",
+    "task": "dyck2",
+    "final_train_ce": 1.00234375,
+    "wall_s": 85.13226008415222
+  },
+  {
+    "loss": 0.968994140625,
+    "ppl": 2.635292392215882,
+    "n_examples": 512,
+    "params_M": 1.135664,
+    "variant": "hymba-with-nsa-gated",
+    "task": "dyck2",
+    "final_train_ce": 0.9806640625,
+    "wall_s": 86.31875658035278
+  },
+  {
+    "loss": 0.9766845703125,
+    "ppl": 2.65563705238373,
+    "n_examples": 512,
+    "params_M": 1.135664,
+    "variant": "hymba-with-nsa-randgate",
+    "task": "dyck2",
+    "final_train_ce": 0.986015625,
+    "wall_s": 86.06637334823608
+  },
+  {
+    "loss": 0.985595703125,
+    "ppl": 2.679407540550246,
+    "n_examples": 512,
+    "params_M": 1.133592,
+    "variant": "hymba-with-asa",
+    "task": "dyck2",
+    "final_train_ce": 0.97875,
+    "wall_s": 79.44822549819946
+  },
+  {
+    "accuracy": 0.5059083631928032,
+    "loss": 0.6844482421875,
+    "n_correct": 6636,
+    "n_total": 13117,
+    "params_M": 1.134376,
+    "variant": "hymba-with-nsa",
+    "task": "parity",
+    "final_train_ce": 0.6855859375,
+    "wall_s": 32.07564902305603
+  },
+  {
+    "accuracy": 0.508957840969734,
+    "loss": 0.6783447265625,
+    "n_correct": 6676,
+    "n_total": 13117,
+    "params_M": 1.135408,
+    "variant": "hymba-with-nsa-gated",
+    "task": "parity",
+    "final_train_ce": 0.6782421875,
+    "wall_s": 32.60960841178894
+  },
+  {
+    "accuracy": 0.5068232065258824,
+    "loss": 0.685546875,
+    "n_correct": 6648,
+    "n_total": 13117,
+    "params_M": 1.135408,
+    "variant": "hymba-with-nsa-randgate",
+    "task": "parity",
+    "final_train_ce": 0.6790625,
+    "wall_s": 33.20239448547363
+  },
+  {
+    "accuracy": 0.5108637645803156,
+    "loss": 0.6810302734375,
+    "n_correct": 6701,
+    "n_total": 13117,
+    "params_M": 1.133336,
+    "variant": "hymba-with-asa",
+    "task": "parity",
+    "final_train_ce": 0.6841796875,
+    "wall_s": 26.104971408843994
+  }
+]

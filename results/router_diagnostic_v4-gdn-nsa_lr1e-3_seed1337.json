@@ -1,0 +1,137 @@
+{
+  "variant": "v4-gdn-nsa",
+  "lr_tag": "1e-3",
+  "seed": 1337,
+  "n_layers": 12,
+  "n_batches": 8,
+  "mean_active_fraction": 0.07587432861328125,
+  "min_active_fraction": 0.0,
+  "max_active_fraction": 0.894378662109375,
+  "h_route": 0.03680963534861803,
+  "dead_layers": 5,
+  "near_dead_layers": 10,
+  "saturated_layers": 0,
+  "mean_gate_conditional_mean": 0.22513629278788963,
+  "rows": [
+    {
+      "gate_mean": 0.03874846315011382,
+      "gate_std": 0.027173400158062577,
+      "active_fraction": 0.894378662109375,
+      "gate_conditional_mean": 0.043318361043930054,
+      "gate_l1": 0.03874846315011382,
+      "std_active_fraction": 0.013015773902856465,
+      "layer": 0,
+      "h_route_layer": 0.3778618834912777
+    },
+    {
+      "gate_mean": 0.0,
+      "gate_std": 0.0,
+      "active_fraction": 0.0,
+      "gate_conditional_mean": 0.0,
+      "gate_l1": 0.0,
+      "std_active_fraction": 0.0,
+      "layer": 1,
+      "h_route_layer": 0.0
+    },
+    {
+      "gate_mean": 0.0,
+      "gate_std": 0.0,
+      "active_fraction": 0.0,
+      "gate_conditional_mean": 0.0,
+      "gate_l1": 0.0,
+      "std_active_fraction": 0.0,
+      "layer": 2,
+      "h_route_layer": 0.0
+    },
+    {
+      "gate_mean": 6.447342457249761e-06,
+      "gate_std": 0.0004126299172639847,
+      "active_fraction": 3.0517578125e-05,
+      "gate_conditional_mean": 0.02640831470489502,
+      "gate_l1": 6.447342457249761e-06,
+      "std_active_fraction": 8.074192233473482e-05,
+      "layer": 3,
+      "h_route_layer": 0.00012206658720970154
+    },
+    {
+      "gate_mean": 0.005419940411229618,
+      "gate_std": 0.09314827667549253,
+      "active_fraction": 0.00457763671875,
+      "gate_conditional_mean": 1.2201967760920525,
+      "gate_l1": 0.005419940411229618,
+      "std_active_fraction": 0.003577201724143702,
+      "layer": 4,
+      "h_route_layer": 0.018226727843284607
+    },
+    {
+      "gate_mean": 0.0,
+      "gate_std": 0.0,
+      "active_fraction": 0.0,
+      "gate_conditional_mean": 0.0,
+      "gate_l1": 0.0,
+      "std_active_fraction": 0.0,
+      "layer": 5,
+      "h_route_layer": 0.0
+    },
+    {
+      "gate_mean": 0.0,
+      "gate_std": 0.0,
+      "active_fraction": 0.0,
+      "gate_conditional_mean": 0.0,
+      "gate_l1": 0.0,
+      "std_active_fraction": 0.0,
+      "layer": 6,
+      "h_route_layer": 0.0
+    },
+    {
+      "gate_mean": 5.228870577411726e-06,
+      "gate_std": 0.00033464771695435047,
+      "active_fraction": 3.0517578125e-05,
+      "gate_conditional_mean": 0.02141745388507843,
+      "gate_l1": 5.228870577411726e-06,
+      "std_active_fraction": 8.074192233473482e-05,
+      "layer": 7,
+      "h_route_layer": 0.00012206658720970154
+    },
+    {
+      "gate_mean": 0.0,
+      "gate_std": 0.0,
+      "active_fraction": 0.0,
+      "gate_conditional_mean": 0.0,
+      "gate_l1": 0.0,
+      "std_active_fraction": 0.0,
+      "layer": 8,
+      "h_route_layer": 0.0
+    },
+    {
+      "gate_mean": 0.016660613531712443,
+      "gate_std": 0.18020242173224688,
+      "active_fraction": 0.0113525390625,
+      "gate_conditional_mean": 1.3036530688405037,
+      "gate_l1": 0.016660613531712443,
+      "std_active_fraction": 0.008909460459513048,
+      "layer": 9,
+      "h_route_layer": 0.044894635677337646
+    },
+    {
+      "gate_mean": 3.116924835921964e-05,
+      "gate_std": 0.0018417718238197267,
+      "active_fraction": 9.1552734375e-05,
+      "gate_conditional_mean": 0.07634491100907326,
+      "gate_l1": 3.116924835921964e-05,
+      "std_active_fraction": 0.00016991468392425603,
+      "layer": 10,
+      "h_route_layer": 0.00036617740988731384
+    },
+    {
+      "gate_mean": 2.513825165806338e-06,
+      "gate_std": 0.00016088481061160564,
+      "active_fraction": 3.0517578125e-05,
+      "gate_conditional_mean": 0.010296627879142761,
+      "gate_l1": 2.513825165806338e-06,
+      "std_active_fraction": 8.074192233473482e-05,
+      "layer": 11,
+      "h_route_layer": 0.00012206658720970154
+    }
+  ]
+}

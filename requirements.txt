@@ -1,0 +1,33 @@
+# HSPMN v5 - ACTUAL pinned environment that produced all v5 results (2026-06-02).
+# Reproducibility is the only currency that matters: these are the versions
+# captured from the live RTX 5090 (sm_120) box via importlib.metadata, NOT an
+# aspirational target. Earlier drafts of this file pinned torch 2.12 / mamba-ssm
+# 3.0 which were never the runtime - corrected here.
+#
+# Install via local proxy if pypi unreachable:
+#   pip install --user --break-system-packages --proxy http://127.0.0.1:3129 \
+#     --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements.txt
+
+# Core (RTX 5090 sm_120 / Blackwell; no FlashAttention-3/4)
+torch==2.10.0          # actual: 2.10.0+cu128 (CUDA 12.8 wheel)
+triton==3.6.0          # actual: 3.6.0+git8fedd49b (custom build; nearest pin)
+numpy==2.4.3
+tqdm==4.67.3
+
+# Linear-attention kernels (Gated DeltaNet / RWKV-7 reference paths)
+flash-linear-attention==0.5.0
+fla-core==0.5.0
+# NOTE: mamba-ssm is NOT installed in this environment. mamba3_block.py runs its
+# pure-PyTorch reference recurrence fallback. Install only if you need the fast
+# Mamba-3 kernel:  pip install git+https://github.com/state-spaces/mamba
+
+# Tokenization + corpora
+transformers==5.3.0
+tokenizers==0.22.2
+einops==0.8.2
+pyarrow==24.0.0
+
+# Logging + paper artifacts
+wandb==0.25.0
+reportlab==4.4.10
+pypdf==6.10.2

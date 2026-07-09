@@ -1,0 +1,83 @@
+% Comprehensive appendix tables - sourced verbatim from results/:
+%   phase2_param_breakdown_2026-05-12.md, phase2_flops_140m_2026-05-12.md,
+%   phase2_synthetics_table_2026-05-12.md. \input near the end of the paper.
+
+\section{Whole-model parameter accounting (140M config)}
+\label{app:params}
+12 layers, $d{=}768$, $H{=}12$, $H_{kv}{=}4$, vocab 50{,}257 (GPT-2 BPE).
+
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+Variant & Embed & 12 blocks & LM head & Total \\
+\midrule
+\texttt{dense} & 38.60M & 75.52M & 38.60M & \textbf{152.71M} \\
+\texttt{hymba} & 38.60M & 115.65M & tied & 154.25M \\
+\texttt{hymba-with-nsa} & 38.60M & 115.73M & tied & 154.33M \\
+\texttt{v4-gdn-nsa} & 38.60M & 116.11M & tied & 154.71M \\
+\texttt{v4-rwkv7-nsa} & 38.60M & 130.31M & tied & 168.91M \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Per-block Q/K/V/O projection share: dense/hymba/hymba-with-nsa $\approx$
+1.57--1.77M; \texttt{v4-*} block-fusion $\approx$ 2.56M (decoupled per-stream
+Q/K/V). The $+19.47\%$ head-vs-block PPL gap is not explained by this $<1\%$
+total-parameter difference (all variants are matched at $\approx154$M except
+\texttt{v4-rwkv7-nsa}); it is structural, consistent with the router-collapse
+diagnostic (\S\ref{sec:h1}).
+
+\section{Forward-pass FLOPs at the 140M config}
+\label{app:flops}
+Counted with \texttt{torch.utils.flop\_counter} at $S{=}1024$, batch 1.
+The $2P$ column is the Kaplan forward approximation ($2\times$ params).
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+Variant & Params (M) & Fwd FLOPs/tok (M) & $\Delta$ vs $2P$ \\
+\midrule
+\texttt{dense} & 152.71 & 228.2 & $-25.3\%$ \\
+\texttt{hymba} & 154.25 & 345.6 & $+12.0\%$ \\
+\texttt{hymba-with-nsa} & 154.33 & 365.8 & $+18.5\%$ \\
+\texttt{hymba-with-asa} & 154.27 & 355.1 & $+15.1\%$ \\
+\texttt{hymba-with-nsa-select} & 154.33 & 368.5 & $+19.4\%$ \\
+\texttt{v4-gdn-nsa} & 154.71 & 435.4 & $+40.7\%$ \\
+\texttt{v4-rwkv7-nsa} & 168.91 & 389.5 & $+15.3\%$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+NSA's compress + sliding-window branches add $O(S^2)$ compute over the $2P$
+base; ASA (no compress) is cheaper; the PC gate is negligible. Block-fusion
+(\texttt{v4-gdn-nsa}, $+40.7\%$) runs a separate full contextual stream and a
+separate reflexive stream, the most expensive of all.
+
+\section{Small-scale state-tracking battery}
+\label{app:synthetics}
+$\approx$1.7--2.8M params, 4 layers, $d{=}128$, 2000 steps. Reviewer-C
+expressivity probe. ($\star$ = best per task.)
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+Variant & MQAR acc & Dyck-2 PPL & Parity acc \\
+\midrule
+\texttt{dense} & 0.02\% & 2.737 & 50.86\% \\
+\texttt{v4-gdn-nsa} & 0.72\% & 2.590 & 52.41\%$^\star$ \\
+\texttt{v4-mamba3-nsa} & 0.71\% & 2.646 & 50.58\% \\
+\texttt{v4-rwkv7-nsa} & 1.03\%$^\star$ & 2.565$^\star$ & 52.15\% \\
+\texttt{hymba} & 0.12\% & 2.693 & 50.73\% \\
+\texttt{hymba-with-nsa} & 0.37\% & 2.677 & 50.59\% \\
+\texttt{hymba-with-nsa-gated} & 0.23\% & 2.635 & --- \\
+\texttt{hymba-with-nsa-randgate} & 0.02\% & 2.656 & --- \\
+\texttt{hymba-with-asa} & 0.06\% & 2.679 & 51.09\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The RWKV-7 generalised delta rule leads MQAR (state tracking) and Dyck-2;
+parity sits at chance ($\sim$50\%) for every variant, consistent with the
+TC$^0$ ceiling at this tiny scale. At 1.7M the gate apparatus burns capacity
+without payback (the gated-vs-randgate gap is within noise), consistent with
+the absorption analysis at 140M/350M.
