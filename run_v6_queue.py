@@ -53,7 +53,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-ROOT = Path("/opt/docker/LLM/HSPMN")
+ROOT = Path(__file__).resolve().parent
 LOG = ROOT / "results" / "v6_queue.log"
 CKPT = "checkpoints_v6"
 

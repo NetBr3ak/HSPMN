@@ -35,7 +35,7 @@ from utils_v3_0 import seed_everything, get_device
 from measure_gate_channel_mi import mutual_information_bits, per_token_ce
 from probe_gate_ceiling import binary_entropy_bits, fit_logistic
 
-DATA_DIR = "/opt/docker/LLM/HSPMN/data"
+DATA_DIR = "./data"
 
 
 def main():
@@ -163,9 +163,7 @@ def main():
     )
     print(f"VERDICT: {verdict}")
 
-    out = Path(
-        f"/opt/docker/LLM/HSPMN/results/sequence_routing_{args.variant}_2026-06.md"
-    )
+    out = Path(f"./results/sequence_routing_{args.variant}_2026-06.md")
     out.write_text(
         f"# Sequence-level routing probe - {args.variant}\n\n"
         f"Checkpoint `{args.ckpt}`, {len(seq_delta)} sequences x {args.seq_len} tokens.\n\n"

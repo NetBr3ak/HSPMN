@@ -13,7 +13,7 @@ import re
 
 import numpy as np
 
-ROOT = "/opt/docker/LLM/HSPMN"
+ROOT = os.path.dirname(os.path.abspath(__file__))
 CKPT = f"{ROOT}/checkpoints_v6"
 OUT = f"{ROOT}/results/v6_routability_summary.md"
 

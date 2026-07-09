@@ -29,7 +29,7 @@ import torch
 from train_v4 import TrainConfig, build_model
 from utils_v3_0 import seed_everything, get_device
 
-DATA_DIR = "/opt/docker/LLM/HSPMN/data"
+DATA_DIR = "./data"
 
 
 def measure_sigma_C(model, valid_tok, n_batches, batch, seq, device):
@@ -156,6 +156,7 @@ def _selftest_fd_curvature():
     """Validate the 5-point finite-difference curvature estimator on f(x)=x^2
     (true second derivative 2.0) before trusting it on the model. Guards against
     the kind of silent numerical failure that produced BUG-1 (lambda == 0)."""
+
     def f(a):
         return a * a
 
@@ -327,10 +328,7 @@ def main():
         print(f"lambda_gate_gain = {lambda_data['lambda_gate_gain']:.6e}")
 
     if not args.out_md:
-        out_md = Path(
-            f"/opt/docker/LLM/HSPMN/results/phase3_constants_"
-            f"{args.variant}_2026-05-12.md"
-        )
+        out_md = Path(f"./results/phase3_constants_{args.variant}_2026-05-12.md")
     else:
         out_md = Path(args.out_md)
     lines = [

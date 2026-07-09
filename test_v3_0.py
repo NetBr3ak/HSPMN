@@ -1,8 +1,3 @@
-"""
-Proprietary / All Rights Reserved - Non-Commercial Use Only
-Source-available for portfolio viewing only. Commercial use, unauthorized modification, reproduction, or distribution is strictly prohibited. All rights reserved.
-"""
-
 import unittest
 import warnings
 import torch
@@ -120,6 +115,7 @@ class TestHSPMNv3(unittest.TestCase):
         self.assertEqual(out.shape, (1, 128, self.config.dim))
         self.assertTrue(torch.is_tensor(aux))
         self.assertEqual(len(cache), 3)
+
 
 if __name__ == "__main__":
     unittest.main()

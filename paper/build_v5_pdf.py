@@ -13,6 +13,8 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 from reportlab.lib.units import inch
 from reportlab.lib import colors
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
     SimpleDocTemplate,
     Paragraph,
@@ -25,9 +27,30 @@ from reportlab.platypus import (
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
+# The 14 standard PDF fonts (Helvetica et al.) use WinAnsi encoding, which
+# lacks Polish letters like the ogonek in "Jedryczko" (Bitstream Vera, which
+# reportlab bundles, is missing them too - only its DejaVu superset has full
+# Polish coverage). DejaVu Sans is bundled here instead of relying on the
+# reader's system fonts.
+_FONT_DIR = os.path.join(HERE, "fonts")
+pdfmetrics.registerFont(TTFont("DejaVu", os.path.join(_FONT_DIR, "DejaVuSans.ttf")))
+pdfmetrics.registerFont(
+    TTFont("DejaVu-Bold", os.path.join(_FONT_DIR, "DejaVuSans-Bold.ttf"))
+)
+pdfmetrics.registerFontFamily("DejaVu", normal="DejaVu", bold="DejaVu-Bold")
+
 
 def styles():
     s = getSampleStyleSheet()
+    for name, font in (
+        ("Normal", "DejaVu"),
+        ("BodyText", "DejaVu"),
+        ("Heading1", "DejaVu-Bold"),
+        ("Heading2", "DejaVu-Bold"),
+        ("Heading3", "DejaVu-Bold"),
+        ("Title", "DejaVu-Bold"),
+    ):
+        s[name].fontName = font
     s.add(
         ParagraphStyle(
             name="Body",
@@ -82,7 +105,8 @@ def table(rows, widths=None):
         TableStyle(
             [
                 ("BACKGROUND", (0, 0), (-1, 0), colors.Color(0.92, 0.92, 0.92)),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 0), (-1, 0), "DejaVu-Bold"),
+                ("FONTNAME", (0, 1), (-1, -1), "DejaVu"),
                 ("FONTSIZE", (0, 0), (-1, -1), 8.6),
                 ("GRID", (0, 0), (-1, -1), 0.4, colors.grey),
                 ("LEFTPADDING", (0, 0), (-1, -1), 4),
@@ -135,8 +159,7 @@ def build():
     )
     st.append(
         Paragraph(
-            "Szymon Jędryczko · Tenzan Logic, Kraków · "
-            "szymon.jendryczkos@gmail.com · June 2026<br/>"
+            "Szymon Jędryczko · Tenzan Logic, Kraków · June 2026<br/>"
             "<i>(local preview rendered from HSPMN_v5_draft.tex; arXiv compiles "
             "the LaTeX source)</i>",
             ParagraphStyle(

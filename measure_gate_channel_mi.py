@@ -39,7 +39,7 @@ import torch.nn.functional as F
 from train_v4 import TrainConfig, build_model
 from utils_v3_0 import seed_everything, get_device
 
-DATA_DIR = "/opt/docker/LLM/HSPMN/data"
+DATA_DIR = "./data"
 
 
 def mutual_information_bits(g, s, n_bins=10):
@@ -288,9 +288,7 @@ def main():
     out_md = (
         Path(args.out_md)
         if args.out_md
-        else Path(
-            f"/opt/docker/LLM/HSPMN/results/gate_channel_mi_{args.variant}_2026-06-02.md"
-        )
+        else Path(f"./results/gate_channel_mi_{args.variant}_2026-06-02.md")
     )
     lines = [
         f"# Gate-as-channel I(g; s) - {args.variant} (2026-06-02)",

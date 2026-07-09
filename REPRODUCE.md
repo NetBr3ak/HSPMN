@@ -106,7 +106,12 @@ committed.
 
 ## 8. Paper
 
+The real submission artifact is the LaTeX source (arXiv compiles it); the
+commands below produce a local reportlab preview for reading without a TeX
+install, using the figures already committed under `paper/figures/`.
+
 ```bash
+python3 paper/make_figures.py    # only needed if results/ data changed
 python3 paper/build_v5_pdf.py    # → paper/HSPMN_v5_draft.pdf
 ```
 

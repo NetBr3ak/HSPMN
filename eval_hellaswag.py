@@ -9,7 +9,7 @@ Output: accuracy + per-example log.
 
 Usage:
     python3 eval_hellaswag.py \
-        --ckpt /opt/docker/LLM/HSPMN/checkpoints_p4_350m/hymba-with-nsa_p4_final.pt \
+        --ckpt ./checkpoints_p4_350m/hymba-with-nsa_p4_final.pt \
         --variant hymba-with-nsa
 """
 
@@ -52,10 +52,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ckpt", required=True)
     ap.add_argument("--variant", required=True)
-    ap.add_argument("--data", default="/opt/docker/LLM/HSPMN/data/hellaswag_val.jsonl")
-    ap.add_argument(
-        "--tokenizer", default="/opt/docker/LLM/HSPMN/data/tokenizer/tokenizer.json"
-    )
+    ap.add_argument("--data", default="./data/hellaswag_val.jsonl")
+    ap.add_argument("--tokenizer", default="./data/tokenizer/tokenizer.json")
     ap.add_argument("--max_examples", type=int, default=2000)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--out_md", default=None)
@@ -105,9 +103,7 @@ def main():
         f"Mean (target loss − best wrong) gap: {mean_loss_gap:+.4f}  (negative = correct lower CE)"
     )
 
-    out_md = Path(
-        args.out_md or f"/opt/docker/LLM/HSPMN/results/hellaswag_{args.variant}_eval.md"
-    )
+    out_md = Path(args.out_md or f"./results/hellaswag_{args.variant}_eval.md")
     out_md.write_text(
         f"# HellaSwag - {args.variant}\n\n"
         f"**Checkpoint:** `{args.ckpt}`\n"

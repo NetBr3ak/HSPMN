@@ -33,7 +33,7 @@ from train_v4 import TrainConfig, build_model
 from utils_v3_0 import seed_everything, get_device
 from measure_gate_channel_mi import mutual_information_bits, per_token_ce, gated_layers
 
-DATA_DIR = "/opt/docker/LLM/HSPMN/data"
+DATA_DIR = "./data"
 
 
 def binary_entropy_bits(p):
@@ -207,9 +207,7 @@ def main():
     out = (
         Path(args.out_md)
         if args.out_md
-        else Path(
-            f"/opt/docker/LLM/HSPMN/results/gate_ceiling_{args.variant}_2026-06.md"
-        )
+        else Path(f"./results/gate_ceiling_{args.variant}_2026-06.md")
     )
     lines = [
         f"# Gate-ceiling probe - {args.variant}",

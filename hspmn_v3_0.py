@@ -1,8 +1,3 @@
-"""
-Proprietary / All Rights Reserved - Non-Commercial Use Only
-Source-available for portfolio viewing only. Commercial use, unauthorized modification, reproduction, or distribution is strictly prohibited. All rights reserved.
-"""
-
 import math
 from typing import Tuple, NamedTuple
 

@@ -12,7 +12,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-OUT = Path("/opt/docker/LLM/HSPMN/paper/figures")
+OUT = Path(__file__).resolve().parent / "figures"
 OUT.mkdir(exist_ok=True)
 plt.rcParams.update(
     {

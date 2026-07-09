@@ -39,7 +39,7 @@ import os
 
 import numpy as np
 
-DATA_DIR = "/opt/docker/LLM/HSPMN/data"
+DATA_DIR = "./data"
 SEG_LEN = 256
 N_PAIRS = 48
 N_QUERIES = 32

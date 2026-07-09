@@ -26,8 +26,8 @@ from train_v4 import TrainConfig, build_model
 from utils_v3_0 import seed_everything, get_device
 
 # Module-level defaults; override via --data_dir and --ckpt_root args
-_DEFAULT_DATA_DIR = "/opt/docker/LLM/HSPMN/data"
-_DEFAULT_CKPT_ROOT = "/opt/docker/LLM/HSPMN/checkpoints_p2screen"
+_DEFAULT_DATA_DIR = "./data"
+_DEFAULT_CKPT_ROOT = "./checkpoints_p2screen"
 
 
 def gather_router_stats(model, valid_tok, n_batches, batch, seq, device):
@@ -95,7 +95,7 @@ def main():
     )
     ap.add_argument(
         "--out_dir",
-        default="/opt/docker/LLM/HSPMN/results",
+        default="./results",
         help="Output directory for markdown and JSON results",
     )
     ap.add_argument(

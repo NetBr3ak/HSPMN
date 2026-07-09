@@ -31,7 +31,7 @@ logger = setup_logging("train_p4_350m")
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--variant", default="hymba-with-nsa")
-    p.add_argument("--data_dir", default="/opt/docker/LLM/HSPMN/data")
+    p.add_argument("--data_dir", default="./data")
     p.add_argument(
         "--train_npy",
         default=None,
@@ -43,7 +43,7 @@ def parse_args():
         default=None,
         help="Path to valid tokens .npy. Default: matched valid file.",
     )
-    p.add_argument("--save_dir", default="/opt/docker/LLM/HSPMN/checkpoints_p4_350m")
+    p.add_argument("--save_dir", default="./checkpoints_p4_350m")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--n_layers", type=int, default=24)
     p.add_argument("--dim", type=int, default=1024)

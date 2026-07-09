@@ -20,7 +20,7 @@ from hspmn_v4_lm import HSPMNv4LM, HSPMNv4LMConfig
 setup_env()
 logger = setup_logging(__name__)
 
-DATA_DIR = "/opt/docker/LLM/HSPMN/data"
+DATA_DIR = "./data"
 
 
 @dataclass
@@ -45,7 +45,7 @@ class TrainConfig:
     target_sparsity: float = 0.25
     aux_loss_coef: float = 0.0
     nsa_window: int = 256
-    save_dir: str = "/opt/docker/LLM/HSPMN/checkpoints"
+    save_dir: str = "./checkpoints"
     random_gate: bool = False
     data_dir: str = DATA_DIR
     decor_coef: float = 0.0
@@ -361,7 +361,7 @@ def main():
         default=DATA_DIR,
         help="directory with train_tokens.npy / valid_tokens.npy",
     )
-    p.add_argument("--save_dir", default="/opt/docker/LLM/HSPMN/checkpoints")
+    p.add_argument("--save_dir", default="./checkpoints")
     p.add_argument("--log_every", type=int, default=25)
     p.add_argument("--eval_every", type=int, default=250)
     p.add_argument("--eval_iters", type=int, default=20)

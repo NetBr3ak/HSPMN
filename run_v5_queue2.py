@@ -19,7 +19,7 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
-ROOT = Path("/opt/docker/LLM/HSPMN")
+ROOT = Path(__file__).resolve().parent
 LOG = ROOT / "results" / "v5_queue2.log"
 P4A = "checkpoints_p4_350m/hymba-with-nsa_p4_final.pt"
 

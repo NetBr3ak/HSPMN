@@ -82,7 +82,7 @@ def main():
     ap.add_argument(
         "--output",
         type=str,
-        default="/opt/docker/LLM/HSPMN/results/phase2_flops_140m_2026-05-12.md",
+        default="./results/phase2_flops_140m_2026-05-12.md",
     )
     args = ap.parse_args()
 

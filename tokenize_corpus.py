@@ -11,7 +11,7 @@ import numpy as np
 import pyarrow.parquet as pq
 from tokenizers import Tokenizer
 
-DEFAULT_DATA_DIR = "/opt/docker/LLM/HSPMN/data"
+DEFAULT_DATA_DIR = "./data"
 
 
 def load_parquet_text(path):
@@ -25,7 +25,7 @@ def main():
     p.add_argument(
         "--data_dir",
         default=DEFAULT_DATA_DIR,
-        help="Data directory (default: /opt/docker/LLM/HSPMN/data)",
+        help="Data directory (default: ./data)",
     )
     p.add_argument("--out_train", default=None)
     p.add_argument("--out_valid", default=None)
