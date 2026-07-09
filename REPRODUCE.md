@@ -71,8 +71,9 @@ python3 run_v5_queue.py --list                                 # progress / done
 nohup python3 run_v5_queue2.py > results/v5_queue2.out 2>&1 &  # queue 2: gated-vs-randgate at 350M
 ```
 
-Output already committed: `results/phase4_350m_analysis_2026-06-05.md`,
-`results/gate_channel_mi_350m_*.md`.
+Output already committed: `results/phase4_350m_analysis_2026-06-05.md` (the
+aggregate; per-seed raw MI dumps are not shipped, only the numbers rolled
+into this summary).
 
 ## 5. Theorem constants (BUG-1 fixed)
 
