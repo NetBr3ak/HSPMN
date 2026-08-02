@@ -10,7 +10,7 @@ below (`train_tokens.npy` = wikitext-103, 119.1M tokens; `valid_tokens.npy` =
 ```bash
 python3 -c "import torch; print(torch.__version__, torch.cuda.get_device_capability())"
 # expect: 2.10.0+cu128 (12, 0)
-python3 -m pytest test_*.py -q          # 56 tests, ~5s, must be green before any run
+python3 -m pytest test_*.py -q          # 56 tests, ~5s (54 + 1 skipped file without triton/CUDA), must be green before any run
 ```
 
 ## 1. Data prep (only if data/*.npy missing)

@@ -1,6 +1,10 @@
 import unittest
+import pytest
 import torch
 import torch.nn.functional as F
+
+pytest.importorskip("triton")  # skip whole file off the RTX 5090 box (no triton/CUDA)
+
 from kernels_v3_0 import sparse_query_sparse_key_attention
 from utils_v3_0 import setup_logging
 

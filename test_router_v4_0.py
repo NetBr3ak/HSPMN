@@ -46,7 +46,7 @@ class TestReMoERouter(unittest.TestCase):
         router = ReMoERouter(self.dim, target_sparsity=0.5)
         x = torch.randn(self.B, self.S, self.dim, requires_grad=True)
         out = router(x)
-        self.assertGreaterEqual(float(out.gate.min()), 0.0)
+        self.assertGreaterEqual(float(out.gate.min().detach()), 0.0)
         loss = out.gate.sum() + out.aux_loss
         loss.backward()
         self.assertIsNotNone(router.gate_proj.weight.grad)
@@ -136,7 +136,7 @@ class TestReMoERouter(unittest.TestCase):
             router.gate_proj.weight.div_(500.0)
         out_small = router(x)
 
-        self.assertGreater(float(out_big.aux_loss), float(out_small.aux_loss))
+        self.assertGreater(float(out_big.aux_loss.detach()), float(out_small.aux_loss.detach()))
 
 
 if __name__ == "__main__":
