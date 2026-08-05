@@ -136,7 +136,9 @@ class TestReMoERouter(unittest.TestCase):
             router.gate_proj.weight.div_(500.0)
         out_small = router(x)
 
-        self.assertGreater(float(out_big.aux_loss.detach()), float(out_small.aux_loss.detach()))
+        self.assertGreater(
+            float(out_big.aux_loss.detach()), float(out_small.aux_loss.detach())
+        )
 
 
 if __name__ == "__main__":

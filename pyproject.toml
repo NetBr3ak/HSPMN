@@ -1,0 +1,18 @@
+[project]
+name = "hspmn"
+version = "5.0.0"
+description = "Nothing to Route On: hybrid Mamba-attention language model routing research"
+requires-python = ">=3.13"
+license = "MIT"
+dependencies = [
+    "torch",
+    "numpy",
+    "triton",
+    "tokenizers",
+    "pyarrow",
+    "reportlab",
+    "matplotlib",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
