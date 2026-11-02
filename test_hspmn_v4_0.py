@@ -2,6 +2,7 @@
 
 import unittest
 import warnings
+
 import torch
 
 # Patch flex_attention for CPU tests (FlexAttention requires CUDA + compile).
@@ -68,7 +69,7 @@ class TestHSPMNBlockV4(unittest.TestCase):
     def test_kv_cache_grows_correctly(self):
         m = HSPMNBlockV4(self.cfg, num_sink_tokens=4).train(False)
         x1 = torch.randn(1, 8, self.cfg.dim)
-        out1, _, kv1 = m(x1)
+        _out1, _, kv1 = m(x1)
         x2 = torch.randn(1, 1, self.cfg.dim)
         out2, _, kv2 = m(x2, past_key_values=kv1)
         self.assertEqual(out2.shape, (1, 1, self.cfg.dim))

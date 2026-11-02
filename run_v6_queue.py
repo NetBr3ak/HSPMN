@@ -50,7 +50,7 @@ continue-on-fail, per-job logs. Waits for the GPU to be free before stage 1.
 import argparse
 import subprocess
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -217,7 +217,7 @@ QUEUE.append(
 
 
 def stamp():
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    return datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
 def log(msg):
@@ -238,7 +238,7 @@ def gpu_free(min_free_mib=24000):
             text=True,
         )
         return int(out.strip().splitlines()[0]) >= min_free_mib
-    except Exception:
+    except (OSError, subprocess.CalledProcessError, ValueError, IndexError):
         return True
 
 
@@ -293,7 +293,7 @@ def main():
     for j in jobs:
         try:
             res[j["name"]] = run_job(j)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - one failed job is logged, the queue goes on.
             log(f"ERROR {j['name']}: {e!r}")
             res[j["name"]] = False
     log(f"=== v6 queue done: {sum(res.values())}/{len(jobs)} artifacts ===")

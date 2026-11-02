@@ -1,7 +1,8 @@
 """LM wrapper for hymba-with-nsa ablation."""
 
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
+
 from hymba_with_nsa_block import HymbaWithNSABlock
 
 

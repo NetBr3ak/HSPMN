@@ -12,11 +12,10 @@ Used as a baseline against HSPMN v4.0 dual-stream design.
 """
 
 import math
-from typing import Tuple
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 from gated_deltanet import GatedDeltaNetReflexive
 from hspmn_v3_0 import RotaryEmbedding, apply_rotary_pos_emb
@@ -108,7 +107,7 @@ class HymbaBlock(nn.Module):
 
     def forward(
         self, x: torch.Tensor, past_key_values=None
-    ) -> Tuple[torch.Tensor, torch.Tensor, tuple]:
+    ) -> tuple[torch.Tensor, torch.Tensor, tuple]:
         B, S, D = x.shape
         x_norm = self.norm(x)
 

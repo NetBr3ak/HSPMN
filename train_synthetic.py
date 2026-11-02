@@ -22,10 +22,9 @@ import os
 import numpy as np
 import torch
 
+from synthetic_dyck import VOCAB_DYCK2, build_dyck2_batch, evaluate_dyck2
 from synthetic_mqar import build_mqar_batch, evaluate_mqar
-from synthetic_dyck import build_dyck2_batch, evaluate_dyck2, VOCAB_DYCK2
-from synthetic_parity import build_parity_batch, evaluate_parity, VOCAB_PARITY
-
+from synthetic_parity import VOCAB_PARITY, build_parity_batch, evaluate_parity
 
 VARIANTS = [
     "dense",
@@ -253,7 +252,7 @@ def main():
                     )
                     print(f"  → {res}")
                     results.append(res)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - one failed run is recorded, the sweep goes on.
                     print(f"  FAILED: {type(e).__name__}: {e}")
                     results.append(
                         {

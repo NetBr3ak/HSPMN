@@ -18,14 +18,17 @@ For HSPMN v5 we use:
 Reference target: RWKV-7 reaches ≥99% at S=8k, KV=256 (Peng et al. Table 7).
 """
 
-from typing import Tuple
-
 import torch
 
 
 def build_mqar_batch(
-    B: int, N: int, M: int, vocab: int = 8192, device: str = "cpu", seed: int = None
-) -> Tuple[torch.Tensor, torch.Tensor]:
+    B: int,
+    N: int,
+    M: int,
+    vocab: int = 8192,
+    device: str = "cpu",
+    seed: int | None = None,
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Build B examples of MQAR with N KV pairs and M queries.
 
     Returns:

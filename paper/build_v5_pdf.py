@@ -8,21 +8,22 @@ Run: python3 build_v5_pdf.py  ->  HSPMN_v5_draft.pdf
 """
 
 import os
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
-from reportlab.lib.units import inch
+
 from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
-    SimpleDocTemplate,
-    Paragraph,
-    Spacer,
+    Image,
     PageBreak,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
     Table,
     TableStyle,
-    Image,
 )
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -170,68 +171,84 @@ def build():
 
     st.append(Paragraph("<b>Abstract</b>", s["Sub"]))
     for para in [
-        "Small hybrid language models pair an attention stream with a "
-        "state-space stream and add a learned gate that decides, token by "
-        "token, how much each stream contributes. We ask a simple question: "
-        "does the gate actually do anything? Across 134 training runs at 140M "
-        "and 350M parameters on a single consumer GPU, the answer is no, and "
-        "we can measure why.",
-        "First, the architecture. A block-level dual-stream design with a "
-        "learned router loses to plain head-level fusion by +19.5% perplexity "
-        "at matched parameters and ingredients, and we trace the loss to the "
-        "router itself: 6 of 12 layers have a gate that is zero for every "
-        "token and two more route under 0.03% of tokens. Second, the gate. "
-        "The learned gate fails to beat a frozen random gate at 140M and "
-        "again at 350M (3 seeds each), reproducing the routing-absorption "
-        "result of Aquino-Michaels at 11x their scale.",
-        "Third, the explanation. We treat the gate as a noisy channel between "
-        "the token and the event 'the attention stream lowers the loss here', "
-        "and prove via Fano and Pinsker inequalities that a gate's benefit "
-        "over an always-on baseline is capped by sqrt(2(I + log2 - H(s))). "
-        "Realising the full routing benefit needs about 0.72 bits. Trained "
-        "gates carry 0.004 to 0.006 bits. An optimal probe trained directly "
-        "on the oracle label reaches only 0.034 bits: 21x short. The routing "
-        "target is nearly information-free, so no token-local gate of this "
-        "class can work, trained or not. Ablating the attention stream hurts "
-        "on 256 of 256 held-out sequences and 98.9% of the benefit variance "
-        "lies within sequences: the optimal routing policy is simply 'always "
-        "on', which is the gate-less baseline. The gates fail not because "
-        "routing is hard to learn but because, on this data, there is "
-        "nothing to route on. The theory identifies the two levers that "
-        "could change this, data heterogeneity and stream non-redundancy, "
-        "and we close by pre-registering both as a falsifiable programme "
-        "with predictions committed before the results.",
+        (
+            "Small hybrid language models pair an attention stream with a "
+            "state-space stream and add a learned gate that decides, token by "
+            "token, how much each stream contributes. We ask a simple question: "
+            "does the gate actually do anything? Across 134 training runs at 140M "
+            "and 350M parameters on a single consumer GPU, the answer is no, and "
+            "we can measure why."
+        ),
+        (
+            "First, the architecture. A block-level dual-stream design with a "
+            "learned router loses to plain head-level fusion by +19.5% perplexity "
+            "at matched parameters and ingredients, and we trace the loss to the "
+            "router itself: 6 of 12 layers have a gate that is zero for every "
+            "token and two more route under 0.03% of tokens. Second, the gate. "
+            "The learned gate fails to beat a frozen random gate at 140M and "
+            "again at 350M (3 seeds each), reproducing the routing-absorption "
+            "result of Aquino-Michaels at 11x their scale."
+        ),
+        (
+            "Third, the explanation. We treat the gate as a noisy channel between "
+            "the token and the event 'the attention stream lowers the loss here', "
+            "and prove via Fano and Pinsker inequalities that a gate's benefit "
+            "over an always-on baseline is capped by sqrt(2(I + log2 - H(s))). "
+            "Realising the full routing benefit needs about 0.72 bits. Trained "
+            "gates carry 0.004 to 0.006 bits. An optimal probe trained directly "
+            "on the oracle label reaches only 0.034 bits: 21x short. The routing "
+            "target is nearly information-free, so no token-local gate of this "
+            "class can work, trained or not. Ablating the attention stream hurts "
+            "on 256 of 256 held-out sequences and 98.9% of the benefit variance "
+            "lies within sequences: the optimal routing policy is simply 'always "
+            "on', which is the gate-less baseline. The gates fail not because "
+            "routing is hard to learn but because, on this data, there is "
+            "nothing to route on. The theory identifies the two levers that "
+            "could change this, data heterogeneity and stream non-redundancy, "
+            "and we close by pre-registering both as a falsifiable programme "
+            "with predictions committed before the results."
+        ),
     ]:
         st.append(Paragraph(para, s["Body"]))
 
     st.append(Paragraph("Contributions", s["Sect"]))
     for c in [
-        "<b>1. Block fusion retired, with a mechanism.</b> +19.5% PPL loss vs "
-        "head fusion at matched ingredients; router modally collapsed (6 dead "
-        "+ 2 effectively dead of 12 layers; one saturated layer at gate mean "
-        "47, std 316); 19% more forward FLOPs per token.",
-        "<b>2. The gate null, replicated at two scales.</b> Learned vs random "
-        "gate: 143.85±9.27 vs 146.24±7.56 at 140M; 82.35±4.78 vs 83.79±1.37 "
-        "at 350M (Welch t = -0.41). Gate-less beats both. Head fusion's own "
-        "-3.4% edge over dense at 140M decays to a tie at 350M.",
-        "<b>3. A gate-channel bound that predicts the null.</b> Advantage cap "
-        "sqrt(2(I + log2 - H(s))); full benefit needs ~0.72 bits; measured "
-        "gates carry 0.0059±0.0004 (learned) vs 0.0029±0.0006 (random) bits, "
-        "capping every gate at <= 15% of the ideal benefit.",
-        "<b>4. The ceiling: the null is structural.</b> Optimal probes "
-        "trained on the oracle label reach 0.034 bits (21x below threshold; "
-        "any token-local gate capped at 24% of ideal). Attention helps on "
-        "256/256 sequences; 98.9% of benefit variance is within-sequence. "
-        "Optimal policy: always on.",
-        "<b>5. A pre-registered programme, executed.</b> Routability phase "
-        "diagram over mixture corpora with recall fraction pi in {0, .1, "
-        ".25, .5}: the oracle-label ceiling rises monotonically 0.018 -> "
-        "0.139 bits (P1 confirmed) yet stays 5x below threshold, and every "
-        "gate-vs-random null lands where the bound requires (P2, Welch p "
-        ">= 0.52 at all pi). Stream decorrelation fails to raise the "
-        "ceiling (P4 falsified). Post-hoc: the parameter-free PC gate beats "
-        "the learned gate pooled across the diagram (-2.35 PPL, p = 0.041) "
-        "and ties gate-less.",
+        (
+            "<b>1. Block fusion retired, with a mechanism.</b> +19.5% PPL loss vs "
+            "head fusion at matched ingredients; router modally collapsed (6 dead "
+            "+ 2 effectively dead of 12 layers; one saturated layer at gate mean "
+            "47, std 316); 19% more forward FLOPs per token."
+        ),
+        (
+            "<b>2. The gate null, replicated at two scales.</b> Learned vs random "
+            "gate: 143.85±9.27 vs 146.24±7.56 at 140M; 82.35±4.78 vs 83.79±1.37 "
+            "at 350M (Welch t = -0.41). Gate-less beats both. Head fusion's own "
+            "-3.4% edge over dense at 140M decays to a tie at 350M."
+        ),
+        (
+            "<b>3. A gate-channel bound that predicts the null.</b> Advantage cap "
+            "sqrt(2(I + log2 - H(s))); full benefit needs ~0.72 bits; measured "
+            "gates carry 0.0059±0.0004 (learned) vs 0.0029±0.0006 (random) bits, "
+            "capping every gate at <= 15% of the ideal benefit."
+        ),
+        (
+            "<b>4. The ceiling: the null is structural.</b> Optimal probes "
+            "trained on the oracle label reach 0.034 bits (21x below threshold; "
+            "any token-local gate capped at 24% of ideal). Attention helps on "
+            "256/256 sequences; 98.9% of benefit variance is within-sequence. "
+            "Optimal policy: always on."
+        ),
+        (
+            "<b>5. A pre-registered programme, executed.</b> Routability phase "
+            "diagram over mixture corpora with recall fraction pi in {0, .1, "
+            ".25, .5}: the oracle-label ceiling rises monotonically 0.018 -> "
+            "0.139 bits (P1 confirmed) yet stays 5x below threshold, and every "
+            "gate-vs-random null lands where the bound requires (P2, Welch p "
+            ">= 0.52 at all pi). Stream decorrelation fails to raise the "
+            "ceiling (P4 falsified). Post-hoc: the parameter-free PC gate beats "
+            "the learned gate pooled across the diagram (-2.35 PPL, p = 0.041) "
+            "and ties gate-less."
+        ),
     ]:
         st.append(Paragraph(c, s["Body"]))
 

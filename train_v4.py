@@ -11,11 +11,11 @@ from dataclasses import asdict, dataclass
 
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
-from utils_v3_0 import setup_env, setup_logging, seed_everything, get_device
 from hspmn_v4_lm import HSPMNv4LM, HSPMNv4LMConfig
+from utils_v3_0 import get_device, seed_everything, setup_env, setup_logging
 
 setup_env()
 logger = setup_logging(__name__)
@@ -75,7 +75,7 @@ class DenseBlock(nn.Module):
         self.rope = RoPE(self.head_dim, max_len)
         self.norm2 = nn.RMSNorm(dim)
         # SwiGLU 8/3·d (Llama-3 / Mamba-3 standard, not 4·d).
-        hidden = int(round(dim * swiglu_ratio / 64.0)) * 64  # round to 64
+        hidden = round(dim * swiglu_ratio / 64.0) * 64  # round to 64
         self.gate = nn.Linear(dim, hidden, bias=False)
         self.up = nn.Linear(dim, hidden, bias=False)
         self.down = nn.Linear(hidden, dim, bias=False)

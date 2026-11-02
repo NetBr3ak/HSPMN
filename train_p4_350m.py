@@ -21,8 +21,8 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from train_v4 import build_model, get_batch, run_validation, cosine_lr, TrainConfig
-from utils_v3_0 import setup_env, setup_logging, seed_everything, get_device
+from train_v4 import TrainConfig, build_model, cosine_lr, get_batch, run_validation
+from utils_v3_0 import get_device, seed_everything, setup_env, setup_logging
 
 setup_env()
 logger = setup_logging("train_p4_350m")

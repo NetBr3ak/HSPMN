@@ -1,8 +1,10 @@
 import unittest
 import warnings
+
 import torch
+
 from hspmn_v3_0 import HSPMNBlock, TopKRouter
-from utils_v3_0 import HSPMNConfig, setup_logging, seed_everything
+from utils_v3_0 import HSPMNConfig, seed_everything, setup_logging
 
 # Suppress external library warnings
 warnings.filterwarnings("ignore", message=".*HF_HUB_ENABLE_HF_TRANSFER.*")

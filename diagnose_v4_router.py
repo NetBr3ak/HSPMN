@@ -23,7 +23,7 @@ import numpy as np
 import torch
 
 from train_v4 import TrainConfig, build_model
-from utils_v3_0 import seed_everything, get_device
+from utils_v3_0 import get_device, seed_everything
 
 # Module-level defaults; override via --data_dir and --ckpt_root args
 _DEFAULT_DATA_DIR = "./data"

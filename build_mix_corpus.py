@@ -110,7 +110,7 @@ def main():
     key_bank, val_bank = make_banks(args.seed)
 
     for pi in args.pis:
-        tag = f"{int(round(pi * 100)):02d}"
+        tag = f"{round(pi * 100):02d}"
         out_dir = f"{DATA_DIR}/mix_pi{tag}"
         meta_p = f"{out_dir}/meta.json"
         if os.path.exists(meta_p):

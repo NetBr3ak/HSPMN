@@ -1,7 +1,9 @@
 """Tests for Gated DeltaNet reflexive stream."""
 
 import unittest
+
 import torch
+
 from gated_deltanet import GatedDeltaNetReflexive, _chunked_gated_delta
 from utils_v3_0 import seed_everything
 

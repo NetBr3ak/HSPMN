@@ -26,11 +26,9 @@ contract: `forward(q_raw, k_raw, v_raw) -> [B, S, dim]`, with shared QKV
 projections from the surrounding block. SwiGLU MLP is kept identical.
 """
 
-from typing import Optional
-
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 try:
     from fla.ops.gated_delta_rule import chunk_gated_delta_rule
@@ -113,7 +111,7 @@ class GatedDeltaNetReflexive(nn.Module):
         head_dim: int,
         mlp_ratio: int = 4,
         chunk_size: int = 64,
-        use_fla: Optional[bool] = None,
+        use_fla: bool | None = None,
     ):
         super().__init__()
         self.dim = dim

@@ -26,11 +26,9 @@ We construct k, a, v, q from the q_raw / k_raw / v_raw inputs (decoupled-QKV
 defense preserved - these are W_Q^refl, W_K^refl, W_V^refl already).
 """
 
-from typing import Optional
-
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 try:
     from fla.ops.rwkv7 import chunk_rwkv7
@@ -99,7 +97,7 @@ class RWKV7Reflexive(nn.Module):
         num_kv_heads: int,
         head_dim: int,
         mlp_ratio: int = 4,
-        use_fla: Optional[bool] = None,
+        use_fla: bool | None = None,
     ):
         super().__init__()
         self.dim = dim

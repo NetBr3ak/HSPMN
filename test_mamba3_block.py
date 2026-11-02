@@ -94,7 +94,7 @@ def test_drop_in_v4_block():
     block.train(False)
     x = torch.randn(1, 16, 64)
     with torch.no_grad():
-        out, aux, _ = block(x)
+        out, _aux, _ = block(x)
     assert out.shape == (1, 16, 64), f"v4 block shape mismatch: {out.shape}"
     assert torch.isfinite(out).all(), "non-finite v4 output with mamba3"
     print("[4/4] HSPMNBlockV4 + reflexive='mamba3' OK", out.shape)

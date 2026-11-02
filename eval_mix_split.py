@@ -20,7 +20,7 @@ import torch
 import torch.nn.functional as F
 
 from train_v4 import TrainConfig, build_model
-from utils_v3_0 import seed_everything, get_device
+from utils_v3_0 import get_device, seed_everything
 
 
 def main():
@@ -88,10 +88,14 @@ def main():
     lines = [
         f"# Split eval: {args.variant} on {args.data_dir}",
         f"ckpt: {args.ckpt}",
-        f"answer positions: n={n_ans}  CE={mean_ans:.4f}  "
-        f"PPL={math.exp(min(mean_ans, 20)):.2f}",
-        f"background positions: n={n_bg}  CE={mean_bg:.4f}  "
-        f"PPL={math.exp(min(mean_bg, 20)):.2f}",
+        (
+            f"answer positions: n={n_ans}  CE={mean_ans:.4f}  "
+            f"PPL={math.exp(min(mean_ans, 20)):.2f}"
+        ),
+        (
+            f"background positions: n={n_bg}  CE={mean_bg:.4f}  "
+            f"PPL={math.exp(min(mean_bg, 20)):.2f}"
+        ),
     ]
     report = "\n".join(lines)
     print(report)

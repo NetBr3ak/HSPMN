@@ -13,17 +13,14 @@ At a fraction `p_query` of positions chosen at random, b_t is replaced by 2
 (the cue) and the label at that position becomes XOR of all preceding bits.
 """
 
-from typing import Tuple
-
 import torch
-
 
 VOCAB_PARITY = 3  # 0, 1, 2 (cue)
 
 
 def build_parity_batch(
     B: int, length: int, p_query: float = 0.1, device: str = "cpu", seed: int = 42
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Return (ids, labels). At cue positions (token=2), label is parity of
     all bit positions strictly before this one. Other positions: label = -100.
     """

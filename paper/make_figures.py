@@ -6,8 +6,9 @@ No TeX needed; figures are embedded by build_v5_pdf.py.
 """
 
 from pathlib import Path
-import numpy as np
+
 import matplotlib
+import numpy as np
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -77,7 +78,7 @@ def fig_gate_null():
     cols = [C_HEAD, C_DENSE, C_GATED, C_RAND]
     fig, ax = plt.subplots(figsize=(5.2, 3.2))
     x = np.arange(4)
-    ax.bar(x, means, yerr=sds, capsize=5, color=cols, alpha=0.85, error_kw=dict(lw=1.2))
+    ax.bar(x, means, yerr=sds, capsize=5, color=cols, alpha=0.85, error_kw={"lw": 1.2})
     for xi, m, s in zip(x, means, sds):
         ax.annotate(f"{m:.1f}±{s:.1f}", (xi, m + s + 0.3), ha="center", fontsize=9)
     ax.set_xticks(x)

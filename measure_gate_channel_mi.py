@@ -37,7 +37,7 @@ import torch
 import torch.nn.functional as F
 
 from train_v4 import TrainConfig, build_model
-from utils_v3_0 import seed_everything, get_device
+from utils_v3_0 import get_device, seed_everything
 
 DATA_DIR = "./data"
 
@@ -171,7 +171,7 @@ def measure(
             "mi_bits": mutual_information_bits(g, s, n_bins=n_bins),
             "p_helps": float(s.mean()),
             "gate_mean": float(g.mean()),
-            "n": int(len(g)),
+            "n": len(g),
         }
     return out
 
@@ -294,8 +294,10 @@ def main():
         f"# Gate-as-channel I(g; s) - {args.variant} (2026-06-02)",
         "",
         f"**Checkpoint:** `{args.ckpt}`.",
-        f"Counterfactual label: per-layer NSA ablation raises next-token CE "
-        f"by > {args.margin} (independent of gate params).",
+        (
+            f"Counterfactual label: per-layer NSA ablation raises next-token CE "
+            f"by > {args.margin} (independent of gate params)."
+        ),
         f"MI estimator self-test: independent={mi_i:.4f}, det={mi_d:.4f} bits.",
         "",
         "| Layer | I(g;s) bits | p(NSA helps) | gate.mean | n |",
@@ -311,10 +313,12 @@ def main():
         "",
         f"**mean I(g; s) = {mi_mean:.4f} bits**",
         "",
-        "Interpretation: a learned gate routes where the contextual stream "
-        "helps, so I(g;s) > 0; the random-gate control should give I ~ 0. "
-        "This is a non-circular, predictive separation criterion that does "
-        "not depend on the loss curvature lambda.",
+        (
+            "Interpretation: a learned gate routes where the contextual stream "
+            "helps, so I(g;s) > 0; the random-gate control should give I ~ 0. "
+            "This is a non-circular, predictive separation criterion that does "
+            "not depend on the loss curvature lambda."
+        ),
     ]
     out_md.write_text("\n".join(lines))
     print(f"Wrote {out_md}")

@@ -7,6 +7,7 @@ P1-P4 verdict table. Resilient to missing artifacts (prints gaps).
 """
 
 import glob
+import itertools
 import math
 import os
 import re
@@ -51,7 +52,8 @@ def collect_ppl():
 def grep_float(path, pattern):
     if not os.path.exists(path):
         return None
-    text = open(path).read()
+    with open(path) as f:
+        text = f.read()
     m = re.search(pattern, text)
     return float(m.group(1)) if m else None
 
@@ -96,7 +98,7 @@ def main():
         lines.append(f"- pi=0.{p}: I_max = {val if val is not None else 'MISSING'}")
     vals = [ceilings[p] for p in pis if ceilings.get(p) is not None]
     if len(vals) >= 2:
-        mono = all(b >= a for a, b in zip(vals, vals[1:]))
+        mono = all(b >= a for a, b in itertools.pairwise(vals))
         lines.append(
             f"\n**P1 verdict: {'CONFIRMED (monotone rise)' if mono else 'FALSIFIED (not monotone)'}**"
         )

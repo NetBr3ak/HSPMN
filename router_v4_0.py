@@ -34,7 +34,7 @@ which has no gradient.
 from typing import NamedTuple
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 
 class RouterV4Output(NamedTuple):
@@ -93,7 +93,7 @@ class ReMoERouter(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> RouterV4Output:
-        B, S, _ = x.shape
+        _B, S, _ = x.shape
 
         # All router math in fp32 - sm_120 TF32 sigmoid pathology, plus
         # z-loss math wants high-precision logsumexp.

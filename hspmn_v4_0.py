@@ -26,11 +26,10 @@ Design notes:
 """
 
 import math
-from typing import Tuple
 
 import torch
-import torch.nn as nn
-from torch.nn.attention.flex_attention import flex_attention, create_block_mask
+from torch import nn
+from torch.nn.attention.flex_attention import create_block_mask, flex_attention
 
 try:
     from kernels_v3_0 import sparse_query_sparse_key_attention
@@ -39,8 +38,8 @@ try:
 except ImportError:
     HAS_TRITON_KERNELS = False
 
-from hspmn_v3_0 import RotaryEmbedding, apply_rotary_pos_emb, LinearStateSpaceStream
 from gated_deltanet import GatedDeltaNetReflexive
+from hspmn_v3_0 import LinearStateSpaceStream, RotaryEmbedding, apply_rotary_pos_emb
 from mamba3_block import Mamba3SISOReflexive
 from nsa_attention import NSAAttention
 from router_v4_0 import ReMoERouter
@@ -57,7 +56,7 @@ class HSPMNBlockV4(nn.Module):
         config: HSPMNConfig,
         num_sink_tokens: int = 8,
         router_local_window: int = 64,
-        router_target_sparsity: float = None,
+        router_target_sparsity: float | None = None,
         router_l1_coef_init: float = 1e-3,
         router_z_loss_coef: float = 1e-3,
         reflexive: str = "elu1",
@@ -358,7 +357,7 @@ class HSPMNBlockV4(nn.Module):
 
     def forward(
         self, x, past_key_values=None
-    ) -> Tuple[torch.Tensor, torch.Tensor, tuple]:
+    ) -> tuple[torch.Tensor, torch.Tensor, tuple]:
         router_out = self.router(x)
         x_norm = self.norm(x)
 

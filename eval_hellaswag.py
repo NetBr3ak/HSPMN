@@ -20,10 +20,10 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.nn.functional as F
-
 from tokenizers import Tokenizer
-from train_v4 import build_model, TrainConfig
-from utils_v3_0 import setup_env, setup_logging, seed_everything, get_device
+
+from train_v4 import TrainConfig, build_model
+from utils_v3_0 import get_device, seed_everything, setup_env, setup_logging
 
 setup_env()
 logger = setup_logging("hellaswag")

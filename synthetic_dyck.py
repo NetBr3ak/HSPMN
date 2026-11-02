@@ -17,10 +17,7 @@ Reference: standard Dyck-k benchmark from the formal-language-recognition
 literature (Hewitt et al., Bhattamishra et al.).
 """
 
-from typing import Tuple
-
 import torch
-
 
 VOCAB_DYCK2 = 5  # 0='(' 1=')' 2='[' 3=']' 4=PAD
 
@@ -76,7 +73,7 @@ def sample_dyck2(
 
 def build_dyck2_batch(
     B: int, length: int, max_depth: int = 16, device: str = "cpu", seed: int = 42
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Return (ids, labels) for next-token training on Dyck-2."""
     gen = torch.Generator().manual_seed(seed)
     seqs = torch.stack([sample_dyck2(length, max_depth, gen) for _ in range(B)])

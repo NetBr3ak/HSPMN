@@ -13,8 +13,7 @@ Covers:
 
 import torch
 
-from rwkv7_block import RWKV7Reflexive, HAS_FLA_RWKV7
-
+from rwkv7_block import HAS_FLA_RWKV7, RWKV7Reflexive
 
 CUDA_OK = torch.cuda.is_available() and HAS_FLA_RWKV7
 
@@ -88,7 +87,7 @@ def test_drop_in_v4_block():
     block.train(False)
     x = torch.randn(1, 16, 64)
     with torch.no_grad():
-        out, aux, _ = block(x)
+        out, _aux, _ = block(x)
     assert out.shape == (1, 16, 64), f"v4 block shape mismatch: {out.shape}"
     assert torch.isfinite(out).all(), "non-finite v4 output with rwkv7"
     print("[4] HSPMNBlockV4 + reflexive='rwkv7' OK", out.shape)
@@ -145,7 +144,13 @@ def test_fla_matches_reference():
         return
     torch.manual_seed(7)
     B, S, dim, H, KV, D = 1, 32, 64, 2, 1, 32
-    cfg = dict(dim=dim, num_heads=H, num_kv_heads=KV, head_dim=D, mlp_ratio=2)
+    cfg = {
+        "dim": dim,
+        "num_heads": H,
+        "num_kv_heads": KV,
+        "head_dim": D,
+        "mlp_ratio": 2,
+    }
     block_ref = RWKV7Reflexive(use_fla=False, **cfg).double()
     block_fla = RWKV7Reflexive(use_fla=True, **cfg).cuda().bfloat16()
     # Copy params (CPU fp64 → CUDA bf16).

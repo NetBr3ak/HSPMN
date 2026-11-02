@@ -29,9 +29,9 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from measure_gate_channel_mi import gated_layers, mutual_information_bits, per_token_ce
 from train_v4 import TrainConfig, build_model
-from utils_v3_0 import seed_everything, get_device
-from measure_gate_channel_mi import mutual_information_bits, per_token_ce, gated_layers
+from utils_v3_0 import get_device, seed_everything
 
 DATA_DIR = "./data"
 
@@ -212,8 +212,10 @@ def main():
     lines = [
         f"# Gate-ceiling probe - {args.variant}",
         "",
-        f"Checkpoint `{args.ckpt}`. Held-out logistic probe h_t -> s_t "
-        f"(s = NSA-ablation raises CE).",
+        (
+            f"Checkpoint `{args.ckpt}`. Held-out logistic probe h_t -> s_t "
+            f"(s = NSA-ablation raises CE)."
+        ),
         "",
         "| layer | p(s=1) | H(s) | val_acc | I(pred;s) bits |",
         "|---|---|---|---|---|",
@@ -222,8 +224,10 @@ def main():
         lines.append(f"| {i} | {p:.3f} | {hs:.3f} | {acc:.3f} | {mi:.4f} |")
     lines += [
         "",
-        f"**mean held-out I(pred;s) = {mi_avg:.4f} bits** vs "
-        f"full-benefit threshold = {thr:.3f} bits (Pinsker form).",
+        (
+            f"**mean held-out I(pred;s) = {mi_avg:.4f} bits** vs "
+            f"full-benefit threshold = {thr:.3f} bits (Pinsker form)."
+        ),
         "",
         f"**VERDICT:** {verdict}",
     ]

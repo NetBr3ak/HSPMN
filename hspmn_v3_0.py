@@ -1,10 +1,10 @@
 import math
-from typing import Tuple, NamedTuple
+from typing import NamedTuple
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.attention.flex_attention import flex_attention, create_block_mask
+from torch import nn
+from torch.nn.attention.flex_attention import create_block_mask, flex_attention
 
 try:
     from kernels_v3_0 import sparse_query_sparse_key_attention
@@ -15,7 +15,7 @@ except ImportError:
 
 from utils_v3_0 import HSPMNConfig
 
-__all__ = ["HSPMNBlock", "TopKRouter", "HSPMNConfig"]
+__all__ = ["HSPMNBlock", "HSPMNConfig", "TopKRouter"]
 
 
 class RouterOutput(NamedTuple):
@@ -68,7 +68,7 @@ class RotaryEmbedding(nn.Module):
 
 def apply_rotary_pos_emb(
     q: torch.Tensor, k: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Applies Rotary Position Embeddings (RoPE)."""
     return (q * cos) + (rotate_half(q) * sin), (k * cos) + (rotate_half(k) * sin)
 
@@ -195,7 +195,7 @@ class LinearStateSpaceStream(nn.Module):
         _bytes_per_elem = 2
         _budget = self._MAX_BATCH * num_heads * _bytes_per_elem
         self._chunk_size: int = max(
-            64, int(math.isqrt(max(1, self._MAX_ATTN_BYTES // max(1, _budget))))
+            64, math.isqrt(max(1, self._MAX_ATTN_BYTES // max(1, _budget)))
         )
         self.register_buffer(
             "_causal_mask",
@@ -420,8 +420,8 @@ class HSPMNBlock(nn.Module):
         k_raw: torch.Tensor,
         v_raw: torch.Tensor,
         router_out: RouterOutput,
-        past_key_values: tuple = None,
-    ) -> Tuple[torch.Tensor, tuple]:
+        past_key_values: tuple | None = None,
+    ) -> tuple[torch.Tensor, tuple]:
         B, S, _ = q_raw.shape
         D = self.dim
 
@@ -516,8 +516,8 @@ class HSPMNBlock(nn.Module):
         return attn_out, new_past_key_values
 
     def forward(
-        self, x: torch.Tensor, past_key_values: tuple = None
-    ) -> Tuple[torch.Tensor, torch.Tensor, tuple]:
+        self, x: torch.Tensor, past_key_values: tuple | None = None
+    ) -> tuple[torch.Tensor, torch.Tensor, tuple]:
         router_out = self.router(x)
         x_norm = self.norm(x)
 

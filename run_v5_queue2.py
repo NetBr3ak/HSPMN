@@ -16,7 +16,7 @@ skip-if-done, continue-on-fail). GPU is free; launch immediately (no
 
 import argparse
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -36,16 +36,20 @@ MIARGS = (
 
 def train(variant, seed, save):
     return (
-        f"python3 train_p4_350m.py --variant {variant} {BASE} --seed {seed} "
-        f"--save_dir {save}",
+        (
+            f"python3 train_p4_350m.py --variant {variant} {BASE} --seed {seed} "
+            f"--save_dir {save}"
+        ),
         f"{save}/{variant}_p4_final.pt",
     )
 
 
 def mi(variant, ckpt, out):
     return (
-        f"python3 measure_gate_channel_mi.py --variant {variant} --ckpt {ckpt} "
-        f"--label_ckpt {P4A} {MIARGS} --out_md {out}",
+        (
+            f"python3 measure_gate_channel_mi.py --variant {variant} --ckpt {ckpt} "
+            f"--label_ckpt {P4A} {MIARGS} --out_md {out}"
+        ),
         out,
     )
 
@@ -84,7 +88,7 @@ QUEUE = _jobs
 
 
 def stamp():
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    return datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
 def log(msg):
@@ -134,7 +138,7 @@ def main():
     for j in jobs:
         try:
             res[j["name"]] = run_job(j)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - one failed job is logged, the queue goes on.
             log(f"ERROR {j['name']}: {e!r}")
             res[j["name"]] = False
     log(f"=== v5 queue2 done: {sum(res.values())}/{len(jobs)} artifacts ===")

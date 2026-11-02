@@ -1,9 +1,11 @@
-import torch
 import logging
 import random
 import warnings
-import numpy as np
 from dataclasses import dataclass
+from typing import ClassVar
+
+import numpy as np
+import torch
 
 
 def setup_env():
@@ -62,7 +64,7 @@ class ColorFormatter(logging.Formatter):
     reset = "\x1b[0m"
 
     # Color mappings
-    FORMATS = {
+    FORMATS: ClassVar[dict[int, str]] = {
         logging.DEBUG: grey + "%(asctime)s | %(levelname)s | %(message)s" + reset,
         logging.INFO: blue
         + "%(asctime)s | "

@@ -2,9 +2,9 @@
 
 import torch
 
+from synthetic_dyck import VOCAB_DYCK2, build_dyck2_batch, sample_dyck2
 from synthetic_mqar import build_mqar_batch
-from synthetic_dyck import build_dyck2_batch, sample_dyck2, VOCAB_DYCK2
-from synthetic_parity import build_parity_batch, VOCAB_PARITY
+from synthetic_parity import VOCAB_PARITY, build_parity_batch
 
 
 def test_mqar_shapes():
@@ -15,7 +15,7 @@ def test_mqar_shapes():
     assert ids.shape == (B, S), f"ids shape: {ids.shape}"
     assert labels.shape == (B, S), f"labels shape: {labels.shape}"
     # Labels should be != -100 only at positions 2N+1, 2N+3, ..., S-1.
-    expected = set(2 * N + 2 * j + 1 for j in range(M))
+    expected = {2 * N + 2 * j + 1 for j in range(M)}
     actual = set((labels[0] != -100).nonzero(as_tuple=True)[0].tolist())
     assert actual == expected, f"label positions mismatch: {actual} vs {expected}"
     print("[1/3] MQAR layout OK")

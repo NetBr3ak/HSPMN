@@ -25,11 +25,11 @@ the PyTorch path is already reasonable because compress and window are
 cuDNN-friendly, and select reuses indices from the existing top-k path.
 """
 
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 
 class NSAOutput(NamedTuple):
@@ -47,7 +47,7 @@ def _sliding_window_attention(q, k, v, window_size, scale):
     so we build the score matrix manually. At window=512 and S=4096 that
     is 4096 × 4096 = ~16M entries per head - fine for medium S.
     """
-    B, H, S, D = q.shape
+    _B, _H, S, _D = q.shape
     scores = torch.matmul(q, k.transpose(-2, -1)) * scale  # [B, H, S, S]
     pos = torch.arange(S, device=q.device)
     causal = pos[:, None] >= pos[None, :]
@@ -69,7 +69,7 @@ def _compress_branch(
     block_starts, block_size) so callers can derive per-query block selection
     (used by NSA-select-from-compress).
     """
-    B, H, S, D = q.shape
+    _B, _H, S, _D = q.shape
     if S < block_size:
         # Sequence too short to compress - return zero contribution.
         zero = torch.zeros_like(q)
@@ -136,7 +136,7 @@ def _derive_select_indices_from_compress(
     """
     if scores is None:
         return None
-    B, H, S, n_blocks = scores.shape
+    B, _H, S, n_blocks = scores.shape
     if pool_over_heads_and_queries:
         # Replace -inf with very-negative finite to avoid NaN in mean.
         scores_safe = scores.masked_fill(scores == float("-inf"), -1e9)
@@ -168,7 +168,7 @@ def _derive_select_indices_from_compress(
     raise NotImplementedError("per-query select_indices not wired yet")
 
 
-def _select_branch(q, k, v, select_indices: Optional[torch.Tensor], scale: float):
+def _select_branch(q, k, v, select_indices: torch.Tensor | None, scale: float):
     """Select branch: attention restricted to per-batch selected positions.
 
     `select_indices` has shape [B, K] (sorted, unique, in [0, S)). Same
@@ -180,7 +180,7 @@ def _select_branch(q, k, v, select_indices: Optional[torch.Tensor], scale: float
     """
     if select_indices is None:
         return torch.zeros_like(q)
-    B, H, S, D = q.shape
+    _B, H, S, D = q.shape
     idx = select_indices.unsqueeze(1).unsqueeze(-1).expand(-1, H, -1, D)
     k_sel = torch.gather(k, 2, idx)  # [B, H, K, D]
     v_sel = torch.gather(v, 2, idx)
@@ -261,9 +261,7 @@ class NSAAttention(nn.Module):
                 # ASA: single branch, bias to ~0.7 (sigmoid(1.0) ≈ 0.73).
                 self.gate_proj.bias.fill_(1.0)
 
-    def forward(
-        self, q, k, v, select_indices: Optional[torch.Tensor] = None
-    ) -> NSAOutput:
+    def forward(self, q, k, v, select_indices: torch.Tensor | None = None) -> NSAOutput:
         B, H, S, D = q.shape
         scale = 1.0 / (D**0.5)
         zeros = q.new_zeros((B, H, S))  # placeholder gate when branch off

@@ -8,11 +8,10 @@ saturate 24 GB during training even at S=2048.
 """
 
 from dataclasses import dataclass
-from typing import List, Optional
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 from hspmn_v4_0 import HSPMNBlockV4
 from utils_v3_0 import HSPMNConfig
@@ -132,8 +131,8 @@ class HSPMNv4LM(nn.Module):
     def forward(
         self,
         input_ids,
-        labels: Optional[torch.Tensor] = None,
-        past_key_values: Optional[List[tuple]] = None,
+        labels: torch.Tensor | None = None,
+        past_key_values: list[tuple] | None = None,
         return_aux: bool = True,
     ):
         h = self.embed_tokens(input_ids)

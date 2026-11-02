@@ -29,11 +29,10 @@ Drop-in contract for HSPMN v4 block:
 """
 
 import math
-from typing import Optional
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 
 def _mamba3_siso_recurrence(
@@ -140,7 +139,7 @@ class Mamba3SISOReflexive(nn.Module):
         head_dim: int,
         mlp_ratio: int = 4,
         n_state: int = 16,
-        use_fla: Optional[bool] = None,
+        use_fla: bool | None = None,
     ):
         super().__init__()
         self.dim = dim

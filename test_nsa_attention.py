@@ -1,7 +1,9 @@
 """Tests for NSA triple-branch attention."""
 
 import unittest
+
 import torch
+
 from nsa_attention import (
     NSAAttention,
     _compress_branch,
