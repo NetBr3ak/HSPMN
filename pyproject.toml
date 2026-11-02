@@ -18,5 +18,5 @@ dependencies = [
 test = ["pytest", "ruff==0.17.3"]
 
 [tool.ruff]
-# CI and local runs must use the same ruff: 0.17 added default rules that 0.15 never checked.
+# CI and local runs must use the same ruff: 0.16 added default rules that 0.15 never checked.
 required-version = "==0.17.3"
