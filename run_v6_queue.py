@@ -238,6 +238,8 @@ def gpu_free(min_free_mib=24000):
             text=True,
         )
         return int(out.strip().splitlines()[0]) >= min_free_mib
+    # Hosts without nvidia-smi (CPU-only jobs, dev laptops) must not stall the queue forever;
+    # the 24 GB jobs then fail loudly on CUDA OOM instead of waiting here.
     except (OSError, subprocess.CalledProcessError, ValueError, IndexError):
         return True
 
