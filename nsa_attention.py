@@ -116,71 +116,41 @@ def _compress_branch(
     return out
 
 
-def _derive_select_indices_from_compress(
-    scores, starts, block_size, n_select_blocks, pool_over_heads_and_queries=True
-):
-    """Per-batch top-N block selection from compress branch scores.
-
-    Args:
-        scores: [B, H, S, n_blocks] pre-softmax compress attention scores.
-        starts: [n_blocks] block start positions in token space.
-        block_size: block width in tokens.
-        n_select_blocks: target K_block count.
-        pool_over_heads_and_queries: if True (per-batch mode), pool scores over
-            head + query dims → per-batch [B, n_blocks], top-K across blocks,
-            then expand to token positions. If False (per-query, expensive),
-            top-K per (B, H, S) and expand - not yet implemented here.
-
-    Returns:
-        [B, K_tokens] long tensor of selected token indices, sorted.
-    """
+def _derive_select_indices_from_compress(scores, starts, block_size, n_select_blocks):
+    """Select completed blocks per query. Sequence length marks invalid positions."""
     if scores is None:
         return None
-    B, _H, S, n_blocks = scores.shape
-    if pool_over_heads_and_queries:
-        # Replace -inf with very-negative finite to avoid NaN in mean.
-        scores_safe = scores.masked_fill(scores == float("-inf"), -1e9)
-        pooled = scores_safe.mean(dim=(1, 2))  # [B, n_blocks]
-        K_block = min(n_select_blocks, n_blocks)
-        _, top_blocks = torch.topk(pooled, K_block, dim=-1)  # [B, K_block]
-        # Expand each block to its block_size tokens.
-        offsets = torch.arange(block_size, device=scores.device)
-        # block starts at starts[top_blocks]: [B, K_block]
-        block_starts = starts[top_blocks]  # [B, K_block]
-        token_idx = (
-            block_starts.unsqueeze(-1)  # [B, K_block, block_size]
-            + offsets.unsqueeze(0).unsqueeze(0)
-        ).clamp(max=S - 1)
-        token_idx = token_idx.view(B, -1)  # [B, K_block * block_size]
-        # Unique + sort per batch.
-        out = []
-        for b in range(B):
-            uniq = torch.unique(token_idx[b])
-            out.append(uniq)
-        # Pad to common length.
-        max_K = max(o.numel() for o in out)
-        padded = torch.zeros(B, max_K, dtype=torch.long, device=scores.device)
-        for b, o in enumerate(out):
-            padded[b, : o.numel()] = o
-            if o.numel() < max_K:
-                padded[b, o.numel() :] = o[-1]  # repeat last
-        return padded
-    raise NotImplementedError("per-query select_indices not wired yet")
+    B, H, S, n_blocks = scores.shape
+    if n_select_blocks < 1:
+        raise ValueError("n_select_blocks must be positive")
+    block_ends = starts + block_size - 1
+    visible = torch.arange(S, device=scores.device)[:, None] >= block_ends
+    causal_scores = scores.masked_fill(~visible, float("-inf"))
+    values, blocks = causal_scores.topk(min(n_select_blocks, n_blocks), dim=-1)
+    offsets = torch.arange(block_size, device=scores.device)
+    indices = starts[blocks].unsqueeze(-1) + offsets
+    indices = indices.masked_fill(~values.isfinite().unsqueeze(-1), S)
+    return indices.reshape(B, H, S, -1)
 
 
 def _select_branch(q, k, v, select_indices: torch.Tensor | None, scale: float):
     """Select branch: attention restricted to per-batch selected positions.
 
     `select_indices` has shape [B, K] (sorted, unique, in [0, S)). Same
-    indices are used for all queries within a batch - coarse but correct.
-    A more faithful NSA implementation chooses per-query top blocks; we
-    use per-batch (cheaper, matches v3.0 style).
+    indices are used for all queries within a batch. Derived selections have
+    shape [B, H, S, K] and use a dense reference mask to merge overlapping blocks.
 
     If `select_indices` is None, returns zero (branch turned off).
     """
     if select_indices is None:
         return torch.zeros_like(q)
-    _B, H, S, D = q.shape
+    B, H, S, D = q.shape
+    if select_indices.ndim == 4:
+        mask = torch.zeros(B, H, S, S + 1, device=q.device, dtype=torch.bool)
+        mask.scatter_(-1, select_indices, True)
+        return F.scaled_dot_product_attention(
+            q, k, v, attn_mask=mask[..., :S], scale=scale
+        )
     idx = select_indices.unsqueeze(1).unsqueeze(-1).expand(-1, H, -1, D)
     k_sel = torch.gather(k, 2, idx)  # [B, H, K, D]
     v_sel = torch.gather(v, 2, idx)
@@ -292,7 +262,7 @@ class NSAAttention(nn.Module):
                 )
 
         # NSA full triple-branch. When select_from_compress and no external
-        # select_indices given, derive per-batch top-K block indices from the
+        # select_indices given, derive per-query top-K block indices from the
         # compress branch's attention scores (parameter-free selection head).
         if self.select_from_compress and select_indices is None:
             out_c, c_scores, c_starts, c_block = _compress_branch(

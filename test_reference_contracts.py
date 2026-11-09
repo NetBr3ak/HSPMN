@@ -8,7 +8,14 @@ import torch
 import torch.nn.functional as F
 
 from gated_deltanet import _chunked_gated_delta
+from hymba_with_nsa_lm import HymbaWithNSALM
+from nsa_attention import NSAAttention
 from train_v4 import DenseLM, get_batch
+
+
+class _EchoRecurrent(torch.nn.Module):
+    def forward(self, q, k, v):
+        return q
 
 
 def test_batch_labels_shift_only_inside_lm():
@@ -53,3 +60,59 @@ def test_delta_rule_matches_independent_matrix_recurrence():
         expected.append(q[0, step, 0] @ state / math.sqrt(3))
     actual = _chunked_gated_delta(q, k, v, alpha, beta, chunk_size=2)
     torch.testing.assert_close(actual[0, :, 0], torch.stack(expected))
+
+
+def test_predictive_gate_does_not_read_suffix():
+    torch.manual_seed(17)
+    model = HymbaWithNSALM(
+        vocab_size=32,
+        n_layers=1,
+        dim=16,
+        num_heads=4,
+        num_kv_heads=2,
+        max_seq_len=16,
+        gate_mode="predictive_coding",
+    ).eval()
+    # Isolate gate causality from the recurrent kernel and its initialization scale.
+    block = model.layers[0]
+    block.ssm = _EchoRecurrent()
+    ids = torch.randint(0, 32, (1, 12))
+    changed = ids.clone()
+    changed[:, 6:] = (changed[:, 6:] + 1) % 32
+    with torch.no_grad():
+        prefix = model(ids)["logits"][:, :6]
+        prefix_gate = block._last_gate[:, :, :6].clone()
+        altered_prefix = model(changed)["logits"][:, :6]
+        altered_gate = block._last_gate[:, :, :6].clone()
+        short_prefix = model(ids[:, :6])["logits"]
+    torch.testing.assert_close(prefix, altered_prefix)
+    torch.testing.assert_close(prefix, short_prefix)
+    torch.testing.assert_close(prefix_gate, altered_gate)
+    torch.testing.assert_close(prefix_gate, block._last_gate)
+
+
+def test_compress_selection_does_not_read_suffix():
+    torch.manual_seed(17)
+    attention = NSAAttention(
+        1,
+        4,
+        compress_block_size=2,
+        compress_stride=2,
+        window_size=2,
+        select_from_compress=True,
+        n_select_blocks=1,
+    ).eval()
+    q = torch.zeros(1, 1, 12, 4)
+    q[..., 0] = 1
+    k = torch.zeros_like(q)
+    k[:, :, 2:4, 0] = 1
+    v = torch.arange(12).float().view(1, 1, 12, 1).expand_as(q)
+    changed_q = q.clone()
+    # Dominate the old pooled -1e9 mask sentinel without changing any prefix query.
+    changed_q[:, :, 6:, 0] = 1e12
+    with torch.no_grad():
+        prefix = attention(q, k, v).out[:, :, :6]
+        altered_prefix = attention(changed_q, k, v).out[:, :, :6]
+        short_prefix = attention(q[:, :, :6], k[:, :, :6], v[:, :, :6]).out
+    torch.testing.assert_close(prefix, altered_prefix)
+    torch.testing.assert_close(prefix, short_prefix)

@@ -224,13 +224,14 @@ class HymbaWithNSABlock(nn.Module):
             # Predictive-coding gate: parameter-free, derives from the SSM
             # reflexive stream's per-token output magnitude. Low norm ≈
             # uncertain reflexive prediction → gate NSA ON; high norm ≈
-            # confident → gate OFF. We z-score the per-token SSM norm
-            # against the batch's own (mean, std), so the gate signal is
-            # scale-invariant regardless of pre-/post-training magnitude.
+            # confident → gate OFF. Prefix statistics must not read future tokens.
             ssm_norm = ssm_out_view.norm(dim=-1)  # [B, n_ssm_heads, S]
             ssm_norm_pooled = ssm_norm.mean(dim=1, keepdim=True)  # [B, 1, S]
-            tau = ssm_norm_pooled.mean(dim=-1, keepdim=True)  # [B, 1, 1]
-            sigma = ssm_norm_pooled.std(dim=-1, keepdim=True).clamp_min(1e-6)
+            ssm_norm_pooled = ssm_norm_pooled.float()
+            count = torch.arange(1, S + 1, device=x.device)
+            tau = ssm_norm_pooled.cumsum(dim=-1) / count
+            variance = ssm_norm_pooled.square().cumsum(dim=-1) / count - tau.square()
+            sigma = variance.clamp_min(1e-12).sqrt()
             pc_signal = (tau - ssm_norm_pooled) / (self.pc_temperature * sigma)
             g = torch.sigmoid(pc_signal).to(attn_out.dtype)
             g = g.expand(-1, self.n_attn_heads, -1).unsqueeze(-1)
