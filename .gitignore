@@ -4,3 +4,13 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.venv/
+data/
+checkpoints*/
+*.egg-info/
+build/
+dist/
+results/*_queue*.log
+results/*_queue*.out
+results/v5_queue2_*.log
+results/v6_*.log

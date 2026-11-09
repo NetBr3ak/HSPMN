@@ -1,10 +1,12 @@
 cff-version: 1.2.0
 message: "If you use this architecture or reference this work in your research, please cite it as below."
+type: software
 authors:
   - family-names: "Jędryczko"
     given-names: "Szymon"
 title: "Nothing to Route On: A Measured Information Ceiling Explains Routing Absorption in Hybrid Mamba-Attention Language Models"
-version: "5.0.0"
-date-released: "2026-07-09"
+version: "5.1.0"
 url: "https://github.com/NetBr3ak/HSPMN"
+repository-code: "https://github.com/NetBr3ak/HSPMN"
+abstract: "Research code accompanying an unpublished manuscript on routing in hybrid recurrent-attention language models."
 license: MIT
