@@ -18,4 +18,4 @@ Aggregates per-seed router diagnostics emitted by `diagnose_v4_router.py`.
 
 ## Layer-level CSV
 
-Layer-level data written to `/opt/docker/LLM/HSPMN/results/router_diagnostics_layer_health_2026-05-14.csv`.
+Layer-level data: [router_diagnostics_layer_health_2026-05-14.csv](router_diagnostics_layer_health_2026-05-14.csv).

@@ -1,122 +1,118 @@
-# HSPMN - Architecture & Module Map
+# Architecture and module map
 
-Hybrid State-space / Predictive-coding / Mixed-attention Networks. Research code
-for sub-2B hybrid language models on a single RTX 5090 (Blackwell, sm_120, 32 GB,
-PyTorch 2.10.0+cu128; **no FlashAttention-3/4** on this arch - all attention is
-SDPA or hand-written Triton/PyTorch).
+HSPMN compares hybrid recurrent-attention language models with dense
+Transformers. The manuscript's v5 configuration combines a Gated DeltaNet
+recurrent stream and an NSA attention stream within each block.
 
-## v5 architecture in one paragraph
+The implementation is a research reference, not a drop-in implementation of
+either the original Hymba model or the full NSA architecture. Recorded training
+settings are in the [experiment tables](results/phase2_combined_140m_2026-05-12.md).
+Current correctness limits are in [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
-A v5 block runs two streams **in parallel at the head level** (Hymba-style head
-fusion), then concatenates: a **reflexive** linear-recurrent stream (gated
-DeltaNet by default) and a **contextual** sparse-attention stream (NSA without
-the learned-selection branch - compression + sliding window only). An optional
-per-token gate modulates the contextual stream. This *head fusion* replaced the
-v4 *block fusion* (two full sub-layers merged by a ReMoE router), which was
-empirically retired (see below).
+## Head-fusion path
 
-```
-                 ┌─────────────── HymbaWithNSABlock ───────────────┐
- x ──► RMSNorm ──┤  reflexive heads:  GatedDeltaNet (linear RNN)    │
-                 │  contextual heads: NSA(compress + window)  ×gate │──► concat ──► o_proj ──► +x
-                 └──────────────────────────────────────────────────┘
-                                    │
-                                 SwiGLU MLP ──► +
-```
-
-## Critical path (v5 - what actually trains the winner)
-
-```
-train_v4.py            universal trainer; build_model() dispatches by variant string
-  └─ build_model ─────► hymba_with_nsa_lm.py        LM head + embedding + N blocks
-                          └─ hymba_with_nsa_block.py  the v5 block (head fusion)
-                               ├─ gated_deltanet.py    reflexive stream  (ICLR'25, 2412.06464)
-                               ├─ nsa_attention.py      contextual stream (DeepSeek, 2502.11089)
-                               └─ hspmn_v3_0.py         shared RMSNorm / RoPE / SwiGLU / sinks
-utils_v3_0.py           universal: logging, seeding, device, TrainConfig helpers
+```mermaid
+flowchart LR
+    X[Input residual] --> N[RMSNorm]
+    N --> R[Gated DeltaNet heads]
+    N --> A[NSA compression and causal window]
+    N --> G[Optional attention gate]
+    R -->|Predictive-coding gate| G
+    A --> M[Gate modulation]
+    G --> M
+    R --> C[Concatenate head groups]
+    M --> C
+    C --> O[Output projection and residual]
+    O --> F[SwiGLU MLP and residual]
 ```
 
-`train_p4_350m.py` is a thin 350M-scale wrapper around `train_v4.py`'s
-`build_model / get_batch / run_validation / cosine_lr / TrainConfig`.
+The recurrent and attention head groups receive projections of the same
+normalized input. Their outputs are concatenated. The default
+`hymba-with-nsa` variant does not use the NSA selection branch and has no
+extra attention gate. NSA's internal branch-mixing gates remain present.
 
-## Module dependency graph (in-degree = #local importers)
+The learned gate uses the current token's hidden state. The random-gate control
+freezes its projection weights. The predictive-coding gate uses recurrent-output
+magnitudes normalized with prefix statistics. Automatic block selection now
+selects only completed compression blocks for each query. Earlier releases used
+whole-sequence statistics and pooled future queries; those paths were not causal.
 
-| in-deg | module | role | v5 status |
-|---|---|---|---|
-| 21 | `utils_v3_0` | logging, seed, device, config | **shared core** |
-| 11 | `train_v4` | universal trainer + `build_model` dispatch | **core** |
-| 4  | `hspmn_v3_0` | RMSNorm, RoPE, SwiGLU, sinks, TopKRouter | **shared core** |
-| 4  | `hspmn_v4_0` | v4 block-fusion model | baseline (retired arch) |
-| 4  | `gated_deltanet` | reflexive linear-recurrent stream | **core (v5)** |
-| 3  | `nsa_attention` | NSA / ASA contextual stream | **core (v5)** |
-| 3  | `kernels_v3_0` | Triton SQSK sparse attention | v3/v4 path |
-| 3  | `hymba_with_nsa_lm` | v5 LM wrapper | **core (v5)** |
-| 2  | `router_v4_0` | ReMoE router (ALF-LB, z-loss) | baseline (v4 only) |
-| 2  | `hspmn_v4_lm` | v4 LM wrapper | baseline |
-| 2  | `rwkv7_block`, `mamba3_block` | alt reflexive primitives | bench / ablation |
-| 2  | `hymba_lm` | Hymba (no-NSA) LM wrapper | baseline |
-| 1  | `hymba_with_nsa_block` | v5 block (head fusion) | **core (v5)** |
+## Code entry points
 
-## Variants `train_v4.py --variant` accepts
+| Module | Role |
+|---|---|
+| [train_v4.py](train_v4.py) | Shared model factory, token batches, validation and trainer |
+| [train_p4_350m.py](train_p4_350m.py) | Larger-scale trainer with resume checkpoints |
+| [hymba_with_nsa_lm.py](hymba_with_nsa_lm.py) | Embeddings, hybrid blocks and language-model loss |
+| [hymba_with_nsa_block.py](hymba_with_nsa_block.py) | Head fusion, optional gate and decorrelation loss |
+| [gated_deltanet.py](gated_deltanet.py) | Recurrent stream, optional FLA kernel and PyTorch reference |
+| [nsa_attention.py](nsa_attention.py) | Compression, selection and sliding-window attention |
+| [hspmn_v3_0.py](hspmn_v3_0.py) | Shared rotary embeddings and earlier model components |
+| [utils_v3_0.py](utils_v3_0.py) | Configuration, device selection, seeding and logging |
+| [hspmn_v4_0.py](hspmn_v4_0.py), [router_v4_0.py](router_v4_0.py) | Earlier block-fusion comparison |
+| [hymba_block.py](hymba_block.py) | Dense-attention hybrid comparison |
+| [rwkv7_block.py](rwkv7_block.py), [mamba3_block.py](mamba3_block.py) | Alternative recurrent primitives |
 
-`dense`, `hymba`, **`hymba-with-nsa`** (P2 winner), `hymba-with-nsa-gated`
-(learned sigmoid gate), `hymba-with-nsa-randgate` (Aquino–Michaels random-gate
-control), `hymba-with-nsa-pcgate` (parameter-free predictive-coding gate),
-`hymba-with-nsa-select` (parameter-free top-K select from compress scores),
-`hymba-with-asa` (alternating window/select per layer), and `v4-*` block-fusion
-families (`v4-gdn-nsa`, `v4-rwkv7-nsa`, …) kept as comparison baselines.
+The v4 comparison uses separate full-width recurrent and contextual sublayers
+with a ReMoE router. It is retained as an experimental baseline, not removed as
+dead code. `kernels_v3_0.py` contains the optional Triton sparse-attention path.
 
-## Reflexive primitives (interchangeable)
+## Variants
 
-- `gated_deltanet.py` - Gated DeltaNet, chunkwise-parallel, FLA kernel + pure
-  PyTorch fallback. **Default reflexive stream.**
-- `rwkv7_block.py` - RWKV-7 generalized delta (rank-2 state, in-context lr).
-- `mamba3_block.py` - Mamba-3 SISO, complex-valued 2×2 block-diagonal state.
+The complete accepted list is defined by `train_v4.py --help`.
 
-## Contextual primitive
+| Variant family | Difference |
+|---|---|
+| `dense` | Transformer baseline with rotary embeddings, grouped-query attention and SwiGLU |
+| `hymba` | Hybrid comparison with dense attention |
+| `hymba-with-nsa` | Recurrent heads plus compression and sliding-window attention |
+| `hymba-with-nsa-gated` | Learned sigmoid gate on the contextual contribution |
+| `hymba-with-nsa-randgate` | Frozen random gate projection |
+| `hymba-with-nsa-pcgate` | Parameter-free predictive-coding gate |
+| `hymba-with-nsa-select` | Automatic selection from compression scores |
+| `hymba-with-asa` | Alternates window-only and selection-only layers; selection layers receive no indices here and return zero attention |
+| `hymba-with-nsa-decor*` | Stream-decorrelation training penalty |
+| `v4-*` | Block-fusion comparisons |
 
-- `nsa_attention.py` - Native Sparse Attention: compress + select + window
-  branches with per-token sigmoid gates. v5 uses **no-select** (compress+window).
-  ASA mode alternates window/select per layer. `kernels_v3_0.py` holds a Triton
-  sparse-query/sparse-key kernel used by the v3/v4 path.
+## Recorded evidence
 
-## Why block fusion was retired (the v5 pivot)
+Every PPL value below comes from runs that trained and validated on a t+2
+target, not on next-token prediction. The cause and the evidence lines are in
+[README.md](README.md#reproduction-status).
 
-At 140M on wikitext-103 (45 runs: 5 variants × 3 LR × 3 seeds, 3000 steps):
+The nominal 140M configuration is not exactly parameter-matched: the audit
+counts 152.71M for dense, 154.33M for `hymba-with-nsa` and 168.91M for
+`v4-rwkv7-nsa`. [Source: parameter accounting](results/phase2_param_breakdown_2026-05-12.md).
 
-| variant | best PPL ± std (3 seeds) | Δ vs dense |
-|---|---|---|
-| dense | 144.01 ± 5.64 | - |
-| hymba | 143.42 ± 9.98 | −0.41 % |
-| **hymba-with-nsa** | **139.14 ± 8.43** | **−3.39 %** |
-| v4-gdn-nsa (block fusion) | 166.23 ± 15.12 | +15.43 % |
-| v4-rwkv7-nsa (block fusion) | 169.55 ± 14.03 | +17.73 % |
+At that scale, the archived table reports PPL 139.14 ± 8.43 for head fusion
+versus 166.23 ± 15.12 for Gated DeltaNet block fusion. This is a 19.47% relative
+increase, calculated as `100 * (166.23 / 139.14 - 1)`.
+[Source: combined ablation table](results/phase2_combined_140m_2026-05-12.md).
 
-Same-ingredient head→block fusion swap: **+19.47 % PPL**, larger than any
-LR/seed variance. Cause: the v4 ReMoE router **modally collapsed** - 7 of 12
-layers had fully dead gates, 2 saturated; ALF-LB held the *batch-averaged*
-active fraction near target while per-layer routing was destroyed. The v5
-absorption-resistance bound predicts exactly this: `ρ−1 ∝ p(1−p)γ²` → 0 when
-per-layer `p ∈ {0,1}`. See `results/router_diagnostics_summary_2026-05-14.md`.
+Router diagnostics report layer-level active fractions. Use the
+[summary](results/router_diagnostics_summary_2026-05-14.md) and
+[per-layer CSV](results/router_diagnostics_layer_health_2026-05-14.csv), not a
+single dead-layer count applied to every seed. The observations alone do not
+establish that router collapse caused the PPL gap.
 
-## Hardware / sm_120 notes
+The larger-scale report counts 348.8M parameters for head fusion and 368.79M for
+dense. It records PPL 85.32 ± 2.64 and 83.75 ± 2.73 respectively, without a
+statistically significant difference under its reported comparison.
+[Source: scale comparison](results/phase4_350m_analysis_2026-06-05.md).
+These values have not been rerun with the corrected training code.
 
-- Blackwell sm_120, 32 GB. Dense 350M trains at ~42–43k tok/s, 13.9 GB VRAM at
-  S=1024/B=8/ga=8 - large headroom for bigger batch or longer context.
-- No FlashAttention-3/4. Attention is `F.scaled_dot_product_attention` or the
-  Triton kernel in `kernels_v3_0.py`. FP8/NVFP4 TMA paths are **not yet wired**
-  (future work).
+## Runtime limits
 
-## Repository layout
+The window-attention reference materializes a square attention-score matrix.
+Automatic selection also uses a dense reference mask. Sparse visibility does
+not make these implementations memory-linear in sequence length.
 
-```
-*.py (root)        live code - blocks, LMs, trainers, analysis, diagnostics, evals, tests
-paper/             LaTeX source (HSPMN_v5_draft.tex, final) + build scripts + figures
-results/           dated experiment logs, tables, theorem drafts, v6 routability artifacts
-```
+CUDA plus FLA enables the accelerated Gated DeltaNet path. CPU tests exercise
+the PyTorch reference. Kernel parity and the effect of the reference fixes need
+a GPU check before using either path for new scientific claims.
 
-`data/` (tokenized wikitext-103, tokenizer, hellaswag_val.jsonl, mix_pi* corpora)
-and `checkpoints_*/` (trained weights per variant/seed) are regenerated
-locally, not shipped in this release - see `REPRODUCE.md`.
-
-See `REPRODUCE.md` for commands, `TROUBLESHOOTING.md` for known bugs.
+Finite probes measure decodable information for the tested probe family.
+Their low measured mutual information is not, by itself, a proof that every
+possible gate has low information or that every alternative routing policy fails.
+See the [recorded probe study](results/gate_ceiling_finding_2026-06.md) for its
+measurements and the manuscript for its theoretical assumptions.
