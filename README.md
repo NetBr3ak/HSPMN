@@ -25,8 +25,10 @@ Routing Absorption in Hybrid Mamba-Attention Language Models*
    nearly dead, 2 saturated) while batch-level load balance looks healthy.
 2. **The gate null, replicated at two scales.** A learned per-token gate ties
    a frozen random gate at 140M (143.85 ± 9.27 vs 146.24 ± 7.56) and at 350M
-   (82.35 ± 4.78 vs 83.79 ± 1.37, 3 seeds each). Gate-less beats both. Head
-   fusion's own −3.4 % edge over dense at 140M decays to a tie at 350M.
+   (82.35 ± 4.78 vs 83.79 ± 1.37, 3 seeds each). Gate-less beats both at
+   140M (139.14 ± 8.43); at 350M all three are within seed noise (gate-less
+   85.32 ± 2.64). Head fusion's own −3.4 % edge over dense at 140M decays to
+   a tie at 350M.
 3. **A gate-channel bound that predicts the null.** Fano + Pinsker give an
    advantage cap `sqrt(2(I + log2 − H(s)))`; full routing benefit needs
    ~0.72 bits. Trained gates carry 0.004–0.006 bits.
