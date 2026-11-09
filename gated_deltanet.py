@@ -5,8 +5,8 @@ official FLA Triton kernels (`fla-org/flash-linear-attention`), but works
 without any external dependency - ships in a single file.
 
 Recurrence:
-  S_t = (α_t · I  −  β_t · k_t k_t^T) · S_{t-1}  +  β_t · v_t k_t^T
-  o_t = q_t · S_t
+  S_t = α_t (I − β_t k_t k_t^T) S_{t-1} + β_t k_t v_t^T
+  o_t = q_t · S_t / sqrt(D)
 
 This unifies Mamba-2's gating (α: forget rate per timestep) with the delta
 rule (β: targeted update). At α=1, β=0 it's identity recurrence; at α=1,
@@ -73,14 +73,14 @@ def _chunked_gated_delta(
             a_view = a_t.unsqueeze(-1).unsqueeze(-1)  # [B, H, 1, 1]
             b_view = b_t.unsqueeze(-1).unsqueeze(-1)  # [B, H, 1, 1]
 
-            # k_t outer k_t - only one row of state needs adjusting per token.
-            kkT = torch.einsum("bhd,bhe->bhde", k_t, k_t)  # [B, H, D, D]
-            update = b_view * torch.einsum("bhde,bhef->bhdf", kkT, state)
-            forget = a_view * state
-            state = forget - update + b_view * torch.einsum("bhd,bhe->bhde", v_t, k_t)
+            # Key-first state: decay before reading the value to overwrite.
+            state = a_view * state
+            prediction = torch.einsum("bhd,bhde->bhe", k_t, state)
+            residual = v_t - prediction
+            state = state + b_view * torch.einsum("bhd,bhe->bhde", k_t, residual)
 
             # Output: q_t · state, with last D the value-output dim.
-            o_t = torch.einsum("bhd,bhde->bhe", q_t, state)
+            o_t = torch.einsum("bhd,bhde->bhe", q_t, state) * (D**-0.5)
             out[:, t] = o_t.to(out.dtype)
 
     return out
@@ -162,7 +162,7 @@ class GatedDeltaNetReflexive(nn.Module):
             # FLA expects gates as log(forget rate); we compute alpha as
             # sigmoid → in (0,1), so log(alpha) ∈ (-∞, 0].
             g_log = torch.log(alpha.float().clamp(min=1e-6))
-            # FLA kernel handles SiLU+L2 norm internally when requested.
+            # FLA normalizes both Q and K when requested.
             attn, _ = chunk_gated_delta_rule(
                 q,
                 k,
@@ -173,9 +173,8 @@ class GatedDeltaNetReflexive(nn.Module):
                 output_final_state=False,
             )
         else:
-            # Reference path: SiLU+L2 norm in PyTorch, then chunked recurrence.
-            k = F.silu(k)
-            k = k / (k.norm(dim=-1, keepdim=True) + 1e-6)
+            q = F.normalize(q.float(), dim=-1).to(q.dtype)
+            k = F.normalize(k.float(), dim=-1).to(k.dtype)
             attn = _chunked_gated_delta(
                 q, k, v, alpha, beta, chunk_size=self.chunk_size
             )
