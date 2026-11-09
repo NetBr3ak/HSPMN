@@ -60,6 +60,8 @@ def grep_float(path, pattern):
 
 def main():
     ppl = collect_ppl()
+    if not ppl:
+        raise SystemExit("No run logs found; existing summary was not changed")
     pis = sorted({k[1] for k in ppl})
     lines = ["# v6 routability phase diagram - summary", ""]
 

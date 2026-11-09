@@ -1,8 +1,6 @@
-"""Phase-4 350M proxy training on FineWeb-Edu.
+"""Resumable proxy training on local token arrays.
 
-Architecture: `hymba-with-nsa` (P2 winner) at 24L/1024d/16h/4kv config.
-Token budget: ~1 B from FineWeb-Edu sample-10BT (5-10 shards tokenised).
-Recipe: AdamW, lr 1e-3 cosine + warmup 500, bf16, grad clip 1.0.
+Pass explicit WikiText paths for the recorded experiment recipe.
 
 Resume support: writes checkpoint every 1000 steps; reads existing checkpoint
 on launch if present. Use this to amortise an interrupted run.
@@ -164,6 +162,7 @@ def main():
     tokens_seen = 0
 
     KILL_S = args.kill_clock_h * 3600.0
+    completed_step = start_step - 1
 
     for step in range(start_step, cfg.steps + 1):
         wall = time.time() - t_start
@@ -171,7 +170,18 @@ def main():
             logger.warning(
                 f"Kill clock {args.kill_clock_h}h reached at step {step}; saving and exiting."
             )
-            break
+            torch.save(
+                {
+                    "model": model.state_dict(),
+                    "opt": opt.state_dict(),
+                    "step": completed_step,
+                    "config": asdict(cfg),
+                },
+                state_path,
+            )
+            raise SystemExit(
+                "Training interrupted; resume checkpoint saved, no final artifact"
+            )
 
         opt.zero_grad(set_to_none=True)
         cur_lr = cosine_lr(step, cfg.warmup_steps, cfg.steps, cfg.lr)
@@ -186,10 +196,11 @@ def main():
             loss.backward()
             accum_loss += float(loss.item())
             tokens_seen += cfg.batch_size * cfg.seq_len
-        losses_window.append(accum_loss * cfg.grad_accum)
+        losses_window.append(accum_loss)
 
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         opt.step()
+        completed_step = step
 
         if step % cfg.log_every == 0:
             mean_loss = np.mean(losses_window[-cfg.log_every :])
@@ -236,7 +247,7 @@ def main():
         {
             "model": model.state_dict(),
             "opt": opt.state_dict(),
-            "step": min(step, cfg.steps),
+            "step": completed_step,
             "config": asdict(cfg),
             "final_valid_ce": v_ce,
             "final_valid_ppl": math.exp(v_ce),

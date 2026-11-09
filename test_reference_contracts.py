@@ -7,6 +7,10 @@ import pytest
 import torch
 import torch.nn.functional as F
 
+import aggregate_v6
+import run_v5_queue2
+import run_v6_queue
+import train_p4_350m
 from gated_deltanet import _chunked_gated_delta
 from hymba_with_nsa_lm import HymbaWithNSALM
 from nsa_attention import NSAAttention
@@ -116,3 +120,64 @@ def test_compress_selection_does_not_read_suffix():
         short_prefix = attention(q[:, :, :6], k[:, :, :6], v[:, :, :6]).out
     torch.testing.assert_close(prefix, altered_prefix)
     torch.testing.assert_close(prefix, short_prefix)
+
+
+def test_aggregate_preserves_summary_without_run_logs(tmp_path, monkeypatch):
+    output = tmp_path / "summary.md"
+    output.write_text("recorded result\n")
+    monkeypatch.setattr(aggregate_v6, "CKPT", str(tmp_path / "missing"))
+    monkeypatch.setattr(aggregate_v6, "OUT", str(output))
+    with pytest.raises(SystemExit, match="No run logs"):
+        aggregate_v6.main()
+    assert output.read_text() == "recorded result\n"
+
+
+@pytest.mark.parametrize("queue", [run_v5_queue2, run_v6_queue])
+def test_queue_rejects_failed_process_with_artifact(queue, tmp_path, monkeypatch):
+    (tmp_path / "results").mkdir()
+    monkeypatch.setattr(queue, "ROOT", tmp_path)
+    monkeypatch.setattr(queue, "log", lambda message: None)
+    states = iter([False, True])
+    monkeypatch.setattr(queue, "done", lambda job: next(states))
+    monkeypatch.setattr(queue.subprocess, "call", lambda *args, **kwargs: 1)
+    if queue is run_v6_queue:
+        monkeypatch.setattr(queue, "wait_for_gpu", lambda name: None)
+    assert not queue.run_job({"name": "run", "artifact": "run.pt", "cmd": "false"})
+
+
+def test_kill_clock_saves_resume_not_final(tmp_path, monkeypatch):
+    tokens = np.tile(np.arange(8, dtype=np.int32), 4)
+    np.save(tmp_path / "train_tokens.npy", tokens)
+    np.save(tmp_path / "valid_tokens.npy", tokens)
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "train_p4_350m.py",
+            "--variant",
+            "dense",
+            "--data_dir",
+            str(tmp_path),
+            "--save_dir",
+            str(tmp_path),
+            "--n_layers",
+            "1",
+            "--dim",
+            "32",
+            "--num_heads",
+            "2",
+            "--num_kv_heads",
+            "1",
+            "--seq_len",
+            "4",
+            "--steps",
+            "1",
+            "--kill_clock_h",
+            "-1",
+        ],
+    )
+    monkeypatch.setattr(train_p4_350m, "get_device", lambda: torch.device("cpu"))
+    with pytest.raises(SystemExit, match="Training interrupted"):
+        train_p4_350m.main()
+    state = torch.load(tmp_path / "dense_p4_state.pt", weights_only=True)
+    assert state["step"] == 0
+    assert not (tmp_path / "dense_p4_final.pt").exists()

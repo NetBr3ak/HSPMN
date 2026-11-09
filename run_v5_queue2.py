@@ -112,7 +112,7 @@ def run_job(j):
         rc = subprocess.call(
             j["cmd"], shell=True, cwd=ROOT, stdout=f, stderr=subprocess.STDOUT
         )
-    ok = done(j)
+    ok = rc == 0 and done(j)
     log(
         f"END   {j['name']}: rc={rc} artifact={'OK' if ok else 'MISSING'}; log={jlog.name}"
     )
@@ -144,6 +144,8 @@ def main():
     log(f"=== v5 queue2 done: {sum(res.values())}/{len(jobs)} artifacts ===")
     for n, ok in res.items():
         log(f"    {'OK  ' if ok else 'MISS'} {n}")
+    if not all(res.values()):
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
