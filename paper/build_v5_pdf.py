@@ -160,9 +160,9 @@ def build():
     )
     st.append(
         Paragraph(
-            "Szymon Jędryczko · Tenzan Logic, Kraków · June 2026<br/>"
-            "<i>(local preview rendered from HSPMN_v5_draft.tex; arXiv compiles "
-            "the LaTeX source)</i>",
+            "Szymon Jędryczko · June 2026<br/>"
+            "<i>(ReportLab preview with separately maintained text; "
+            "not a rendering of the TeX source)</i>",
             ParagraphStyle(
                 "a", parent=s["Body"], fontSize=9.5, alignment=TA_CENTER, spaceAfter=14
             ),
