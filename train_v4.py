@@ -1,6 +1,6 @@
 """HSPMN v4.0 LM training on wikitext-103.
 
-Real next-token CE on a real corpus (~119M tokens). Sized for single 5090.
+The LM loss shifts unshifted token labels internally.
 """
 
 import argparse
@@ -14,6 +14,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+from hspmn_v3_0 import RotaryEmbedding, apply_rotary_pos_emb
 from hspmn_v4_lm import HSPMNv4LM, HSPMNv4LMConfig
 from utils_v3_0 import get_device, seed_everything, setup_env, setup_logging
 
@@ -59,8 +60,6 @@ class DenseBlock(nn.Module):
 
     def __init__(self, dim, n_heads, n_kv_heads, swiglu_ratio=8 / 3, max_len=2048):
         super().__init__()
-        from bench_dense_baseline import RoPE
-
         self.dim = dim
         self.n_heads = n_heads
         self.n_kv_heads = n_kv_heads
@@ -72,7 +71,7 @@ class DenseBlock(nn.Module):
         self.k_proj = nn.Linear(dim, self.kv_dim, bias=False)
         self.v_proj = nn.Linear(dim, self.kv_dim, bias=False)
         self.o_proj = nn.Linear(dim, dim, bias=False)
-        self.rope = RoPE(self.head_dim, max_len)
+        self.rope = RotaryEmbedding(self.head_dim, max_len)
         self.norm2 = nn.RMSNorm(dim)
         # SwiGLU 8/3·d (Llama-3 / Mamba-3 standard, not 4·d).
         hidden = round(dim * swiglu_ratio / 64.0) * 64  # round to 64
@@ -86,7 +85,8 @@ class DenseBlock(nn.Module):
         q = self.q_proj(n).view(B, S, self.n_heads, self.head_dim).transpose(1, 2)
         k = self.k_proj(n).view(B, S, self.n_kv_heads, self.head_dim).transpose(1, 2)
         v = self.v_proj(n).view(B, S, self.n_kv_heads, self.head_dim).transpose(1, 2)
-        q, k = self.rope(q, k)
+        cos, sin = self.rope(q, S)
+        q, k = apply_rotary_pos_emb(q, k, cos, sin)
         k = k.repeat_interleave(self.kv_groups, dim=1)
         v = v.repeat_interleave(self.kv_groups, dim=1)
         out = F.scaled_dot_product_attention(q, k, v, is_causal=True)
@@ -277,12 +277,13 @@ def build_model(cfg: TrainConfig, vocab: int, device, dtype):
 
 
 def get_batch(tokens: np.ndarray, B: int, S: int, device):
-    starts = np.random.randint(0, len(tokens) - S - 1, size=(B,))
+    if S < 2 or len(tokens) < S:
+        raise ValueError("Need a sequence length >= 2 and at least that many tokens")
+    starts = np.random.randint(0, len(tokens) - S + 1, size=(B,))
     x = np.stack([tokens[s : s + S] for s in starts])
-    y = np.stack([tokens[s + 1 : s + S + 1] for s in starts])
     x_t = torch.from_numpy(x).long().to(device, non_blocking=True)
-    y_t = torch.from_numpy(y).long().to(device, non_blocking=True)
-    return x_t, y_t
+    # Every LM shifts labels inside forward; shifting here skips a token.
+    return x_t, x_t.clone()
 
 
 @torch.no_grad()
@@ -427,7 +428,7 @@ def main():
             loss.backward()
             accum_loss += float(loss.item())
             tokens_seen += cfg.batch_size * cfg.seq_len
-        losses_window.append(accum_loss * cfg.grad_accum)
+        losses_window.append(accum_loss)
 
         torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.max_grad_norm)
         opt.step()

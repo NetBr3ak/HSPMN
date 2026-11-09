@@ -123,10 +123,8 @@ def estimate_L_star(model, valid_tok, n_batches, batch, seq, device):
         for _ in range(n_batches):
             starts = np.random.randint(0, len(valid_tok) - seq - 1, size=(batch,))
             x = np.stack([valid_tok[s : s + seq] for s in starts])
-            y = np.stack([valid_tok[s + 1 : s + seq + 1] for s in starts])
             x_t = torch.from_numpy(x).long().to(device)
-            y_t = torch.from_numpy(y).long().to(device)
-            out = model(x_t, labels=y_t)
+            out = model(x_t, labels=x_t)
             losses.append(float(out["loss"].item()))
     return float(np.mean(losses))
 
@@ -142,10 +140,8 @@ def _eval_loss_on_fixed_batches(model, valid_tok, fixed_starts, batch, seq, devi
     with torch.no_grad():
         for s_off in fixed_starts:
             x = np.stack([valid_tok[s : s + seq] for s in s_off])
-            y = np.stack([valid_tok[s + 1 : s + seq + 1] for s in s_off])
             x_t = torch.from_numpy(x).long().to(device)
-            y_t = torch.from_numpy(y).long().to(device)
-            out = model(x_t, labels=y_t)
+            out = model(x_t, labels=x_t)
             # Convert to fp32 for accumulation to avoid bf16 quantization noise
             loss_acc += float(out["loss"].float().item())
             count += 1
