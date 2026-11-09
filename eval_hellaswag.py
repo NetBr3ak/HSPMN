@@ -20,7 +20,6 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.nn.functional as F
-from tokenizers import Tokenizer
 
 from train_v4 import TrainConfig, build_model
 from utils_v3_0 import get_device, seed_everything, setup_env, setup_logging
@@ -33,22 +32,25 @@ logger = setup_logging("hellaswag")
 def score_completion(model, tokenizer, ctx_text, ending_text, device):
     """Return per-token CE for the ending tokens, conditioned on ctx."""
     ctx_ids = tokenizer.encode(ctx_text).ids
+    n_ctx = len(ctx_ids)
+    if n_ctx == 0:
+        raise ValueError("Completion scoring requires a nonempty tokenized context")
     full_ids = ctx_ids + tokenizer.encode(" " + ending_text).ids
+    if len(full_ids) <= n_ctx:
+        return float("inf")
     full_t = torch.tensor([full_ids], dtype=torch.long, device=device)
     out = model(full_t)
     logits = out["logits"]
-    # Score ending tokens: positions len(ctx_ids) .. len(full)-1 predict tokens
-    # at len(ctx_ids)+1 .. len(full).
-    n_ctx = len(ctx_ids)
-    if len(full_ids) <= n_ctx + 1:
-        return float("inf")
-    target = torch.tensor(full_ids[n_ctx + 1 :], dtype=torch.long, device=device)
-    pred_logits = logits[0, n_ctx:-1]  # [n_ending - 1, vocab]
+    target = torch.tensor(full_ids[n_ctx:], dtype=torch.long, device=device)
+    pred_logits = logits[0, n_ctx - 1 : -1]
     loss = F.cross_entropy(pred_logits, target, reduction="mean")
     return float(loss.item())
 
 
 def main():
+    # Imported here so the CPU tests can import score_completion without tokenizers.
+    from tokenizers import Tokenizer
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--ckpt", required=True)
     ap.add_argument("--variant", required=True)
@@ -63,7 +65,7 @@ def main():
     device = get_device()
     dtype = torch.bfloat16 if device.type == "cuda" else torch.float32
 
-    ckpt = torch.load(args.ckpt, map_location="cpu", weights_only=False)
+    ckpt = torch.load(args.ckpt, map_location="cpu", weights_only=True)
     cfg_d = dict(ckpt["config"])
     train_cfg = TrainConfig(**cfg_d)
     tokenizer = Tokenizer.from_file(args.tokenizer)
