@@ -50,6 +50,7 @@ class TrainConfig:
     random_gate: bool = False
     data_dir: str = DATA_DIR
     decor_coef: float = 0.0
+    isolate_validation_rng: bool = False
 
 
 class DenseBlock(nn.Module):
@@ -276,10 +277,13 @@ def build_model(cfg: TrainConfig, vocab: int, device, dtype):
     return m.to(device, dtype=dtype)
 
 
-def get_batch(tokens: np.ndarray, B: int, S: int, device):
+def get_batch(tokens: np.ndarray, B: int, S: int, device, *, rng=None):
     if S < 2 or len(tokens) < S:
         raise ValueError("Need a sequence length >= 2 and at least that many tokens")
-    starts = np.random.randint(0, len(tokens) - S + 1, size=(B,))
+    if rng is None:
+        starts = np.random.randint(0, len(tokens) - S + 1, size=(B,))
+    else:
+        starts = rng.integers(0, len(tokens) - S + 1, size=(B,))
     x = np.stack([tokens[s : s + S] for s in starts])
     x_t = torch.from_numpy(x).long().to(device, non_blocking=True)
     # Every LM shifts labels inside forward; shifting here skips a token.
@@ -287,12 +291,12 @@ def get_batch(tokens: np.ndarray, B: int, S: int, device):
 
 
 @torch.no_grad()
-def run_validation(model, tokens, cfg, device):
+def run_validation(model, tokens, cfg, device, *, rng=None):
     was_training = model.training
     model.train(False)
     losses = []
     for _ in range(cfg.eval_iters):
-        x, y = get_batch(tokens, cfg.batch_size, cfg.seq_len, device)
+        x, y = get_batch(tokens, cfg.batch_size, cfg.seq_len, device, rng=rng)
         out = model(x, labels=y)
         losses.append(float(out["loss"].item()))
     model.train(was_training)
@@ -366,12 +370,20 @@ def main():
     p.add_argument("--log_every", type=int, default=25)
     p.add_argument("--eval_every", type=int, default=250)
     p.add_argument("--eval_iters", type=int, default=20)
+    p.add_argument(
+        "--isolate_validation_rng",
+        action="store_true",
+        help="use a separate random generator for validation batches",
+    )
     args = p.parse_args()
 
     cfg = TrainConfig(
         **{k: v for k, v in vars(args).items() if k in TrainConfig.__dataclass_fields__}
     )
     seed_everything(cfg.seed)
+    validation_rng = (
+        np.random.default_rng(cfg.seed) if cfg.isolate_validation_rng else None
+    )
     device = get_device()
     dtype = (
         torch.bfloat16
@@ -452,7 +464,7 @@ def main():
                 )
 
         if step % cfg.eval_every == 0 or step == cfg.steps:
-            v_ce = run_validation(model, valid_tok, cfg, device)
+            v_ce = run_validation(model, valid_tok, cfg, device, rng=validation_rng)
             logger.info(f"  → valid CE={v_ce:.4f}  ppl={math.exp(v_ce):.2f}")
             with open(log_path, "a") as f:
                 f.write(f"{step},,{v_ce:.4f},{cur_lr:.6f},,\n")

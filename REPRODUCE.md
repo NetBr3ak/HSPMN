@@ -39,6 +39,20 @@ ruff format --check .
 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 python -m pytest -q
 ```
 
+For a new experiment, record the checkout commit, Python, PyTorch and NumPy
+versions, device, seed and all trainer arguments with the results. A seed does
+not guarantee identical results across hardware or software versions. See
+[PyTorch reproducibility](https://docs.pytorch.org/docs/stable/notes/randomness.html).
+In `train_v4.py` and `train_p4_350m.py`, training and validation both draw from
+NumPy's global random generator. Changing `--eval_every` or `--eval_iters` can
+therefore change subsequent training batches even when `--seed` is unchanged.
+That shared sampling stream remains the default. The corrected trainer still
+differs from the recorded runs in the ways listed above. For new
+runs, pass `--isolate_validation_rng` to use a separately seeded generator for
+validation batches. The flag prevents validation sampling from advancing the
+NumPy training stream. It does not make GPU operations deterministic or restore
+generator state when a 350M run resumes.
+
 Tests that require CUDA or Triton skip without those requirements. Keep those
 tests in GPU validation. CI does not run full training or validate the paper.
 Measured on 2026-11-09 for version 5.1.0: 71 passed and one Triton skip in
@@ -115,7 +129,7 @@ checkpoint writing. The small dimensions and step count are test settings,
 not a published experiment recipe.
 
 ```bash
-python train_v4.py --variant dense --n_layers 1 --dim 32 \
+python train_v4.py --variant dense --isolate_validation_rng --n_layers 1 --dim 32 \
   --num_heads 4 --num_kv_heads 2 --seq_len 16 --batch_size 1 \
   --grad_accum 1 --steps 2 --warmup_steps 1 --eval_every 1 \
   --eval_iters 1 --log_every 1 --save_dir checkpoints_smoke/dense
@@ -134,7 +148,7 @@ The reports do not record the historical warmup. The warmup below is a new-run
 choice, not a recovered experiment setting.
 
 ```bash
-python train_v4.py --variant hymba-with-nsa --lr 1e-3 --seed 42 \
+python train_v4.py --variant hymba-with-nsa --lr 1e-3 --seed 42 --isolate_validation_rng \
   --n_layers 12 --dim 768 --num_heads 12 --num_kv_heads 4 \
   --seq_len 1024 --batch_size 4 --grad_accum 8 --steps 3000 \
   --warmup_steps 500 --nsa_window 256 \
@@ -163,7 +177,7 @@ is defined in the historical queue, while the dense configuration uses its own
 width and head counts.
 
 ```bash
-python train_p4_350m.py --variant hymba-with-nsa --seed 42 \
+python train_p4_350m.py --variant hymba-with-nsa --seed 42 --isolate_validation_rng \
   --train_npy data/train_tokens.npy --valid_npy data/valid_tokens.npy \
   --n_layers 24 --dim 896 --num_heads 14 --num_kv_heads 2 \
   --seq_len 1024 --batch_size 8 --grad_accum 8 --steps 15000 \
@@ -171,7 +185,7 @@ python train_p4_350m.py --variant hymba-with-nsa --seed 42 \
   --eval_every 500 --eval_iters 32 --ckpt_every 1000 --kill_clock_h 10 \
   --save_dir checkpoints_corrected_350m/hymba-with-nsa_seed42
 
-python train_p4_350m.py --variant dense --seed 42 \
+python train_p4_350m.py --variant dense --seed 42 --isolate_validation_rng \
   --train_npy data/train_tokens.npy --valid_npy data/valid_tokens.npy \
   --n_layers 24 --dim 1024 --num_heads 16 --num_kv_heads 4 \
   --seq_len 1024 --batch_size 8 --grad_accum 8 --steps 15000 \

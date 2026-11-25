@@ -57,6 +57,11 @@ def parse_args():
     p.add_argument("--log_every", type=int, default=50)
     p.add_argument("--eval_every", type=int, default=500)
     p.add_argument("--eval_iters", type=int, default=32)
+    p.add_argument(
+        "--isolate_validation_rng",
+        action="store_true",
+        help="use a separate random generator for validation batches",
+    )
     p.add_argument("--ckpt_every", type=int, default=1000)
     p.add_argument("--nsa_window", type=int, default=512)
     p.add_argument(
@@ -88,6 +93,9 @@ def find_data(args):
 def main():
     args = parse_args()
     seed_everything(args.seed)
+    validation_rng = (
+        np.random.default_rng(args.seed) if args.isolate_validation_rng else None
+    )
     device = get_device()
     dtype = (
         torch.bfloat16
@@ -121,6 +129,7 @@ def main():
         weight_decay=args.weight_decay,
         eval_every=args.eval_every,
         eval_iters=args.eval_iters,
+        isolate_validation_rng=args.isolate_validation_rng,
         log_every=args.log_every,
         nsa_window=args.nsa_window,
         seed=args.seed,
@@ -221,7 +230,7 @@ def main():
                 )
 
         if step % cfg.eval_every == 0 or step == cfg.steps:
-            v_ce = run_validation(model, valid_tok, cfg, device)
+            v_ce = run_validation(model, valid_tok, cfg, device, rng=validation_rng)
             logger.info(f"  → valid CE={v_ce:.4f}  ppl={math.exp(v_ce):.2f}")
             with open(log_path, "a") as f:
                 f.write(
@@ -241,7 +250,7 @@ def main():
             logger.info(f"  ckpt saved → {state_path}")
 
     # Final save (full eval).
-    v_ce = run_validation(model, valid_tok, cfg, device)
+    v_ce = run_validation(model, valid_tok, cfg, device, rng=validation_rng)
     final_path = os.path.join(cfg.save_dir, f"{cfg.variant}_p4_final.pt")
     torch.save(
         {

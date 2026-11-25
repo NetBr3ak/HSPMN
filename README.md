@@ -103,6 +103,9 @@ For dataset downloads, a small training check and the full GPU recipes, see
 [REPRODUCE.md](REPRODUCE.md). The recorded hardware and training settings are in
 the [experiment report](results/phase4_350m_analysis_2026-06-05.md).
 
+For new runs, `--isolate_validation_rng` keeps validation sampling from
+advancing the NumPy training stream. The default keeps the legacy shared stream.
+
 ## Repository map
 
 | Path | Contents |
