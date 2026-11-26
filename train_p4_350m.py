@@ -12,6 +12,7 @@ Usage:
 import argparse
 import math
 import os
+import tempfile
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -200,30 +201,36 @@ def main():
 
     def save_checkpoint(step):
         algorithm, keys, position, has_gauss, cached_gaussian = np.random.get_state()
-        torch.save(
-            {
-                "model": model.state_dict(),
-                "opt": opt.state_dict(),
-                "step": step,
-                "config": asdict(cfg),
-                "tokens_seen": tokens_seen,
-                "rng_state": {
-                    "numpy": (
-                        algorithm,
-                        keys.tolist(),
-                        position,
-                        has_gauss,
-                        cached_gaussian,
-                    ),
-                    "validation": (
-                        validation_rng.bit_generator.state
-                        if validation_rng is not None
-                        else None
-                    ),
-                },
+        checkpoint = {
+            "model": model.state_dict(),
+            "opt": opt.state_dict(),
+            "step": step,
+            "config": asdict(cfg),
+            "tokens_seen": tokens_seen,
+            "rng_state": {
+                "numpy": (
+                    algorithm,
+                    keys.tolist(),
+                    position,
+                    has_gauss,
+                    cached_gaussian,
+                ),
+                "validation": (
+                    validation_rng.bit_generator.state
+                    if validation_rng is not None
+                    else None
+                ),
             },
-            state_path,
+        }
+        descriptor, temporary_path = tempfile.mkstemp(
+            dir=cfg.save_dir, prefix="checkpoint-", suffix=".pt"
         )
+        os.close(descriptor)
+        try:
+            torch.save(checkpoint, temporary_path)
+            os.replace(temporary_path, state_path)
+        finally:
+            Path(temporary_path).unlink(missing_ok=True)
 
     KILL_S = args.kill_clock_h * 3600.0
     completed_step = start_step - 1

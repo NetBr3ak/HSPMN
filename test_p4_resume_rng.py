@@ -13,12 +13,12 @@ import train_p4_350m as trainer
 
 mode = sys.argv.pop(1)
 if mode == "periodic":
-    save = trainer.torch.save
-    def interrupt_after_save(value, path, *args, **kwargs):
-        save(value, path, *args, **kwargs)
-        if str(path).endswith("_p4_state.pt") and value["step"] == 2:
+    log = trainer.logger.info
+    def interrupt_after_save(message, *args, **kwargs):
+        log(message, *args, **kwargs)
+        if "ckpt saved" in str(message):
             raise SystemExit(73)
-    trainer.torch.save = interrupt_after_save
+    trainer.logger.info = interrupt_after_save
 else:
     step = trainer.torch.optim.AdamW.step
     completed = [0]
