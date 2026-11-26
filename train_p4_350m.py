@@ -27,6 +27,22 @@ setup_env()
 logger = setup_logging("train_p4_350m")
 
 
+def save_atomically(payload, destination, creation_mode):
+    path = Path(destination)
+    with tempfile.TemporaryDirectory(dir=path.parent, prefix=".checkpoint-") as staging:
+        # PyTorch uses the filename as the root directory inside its ZIP archive.
+        temporary = Path(staging) / path.name
+        temporary.touch(mode=creation_mode)
+        torch.save(payload, temporary)
+        try:
+            previous_mode = path.stat().st_mode & 0o777
+        except FileNotFoundError:
+            pass
+        else:
+            temporary.chmod(previous_mode)
+        os.replace(temporary, path)
+
+
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--variant", default="hymba-with-nsa")
@@ -222,15 +238,7 @@ def main():
                 ),
             },
         }
-        descriptor, temporary_path = tempfile.mkstemp(
-            dir=cfg.save_dir, prefix="checkpoint-", suffix=".pt"
-        )
-        os.close(descriptor)
-        try:
-            torch.save(checkpoint, temporary_path)
-            os.replace(temporary_path, state_path)
-        finally:
-            Path(temporary_path).unlink(missing_ok=True)
+        save_atomically(checkpoint, state_path, 0o600)
 
     KILL_S = args.kill_clock_h * 3600.0
     completed_step = start_step - 1
@@ -298,7 +306,7 @@ def main():
     # Final save (full eval).
     v_ce = run_validation(model, valid_tok, cfg, device, rng=validation_rng)
     final_path = os.path.join(cfg.save_dir, f"{cfg.variant}_p4_final.pt")
-    torch.save(
+    save_atomically(
         {
             "model": model.state_dict(),
             "opt": opt.state_dict(),
@@ -310,6 +318,7 @@ def main():
             "tokens_seen": tokens_seen,
         },
         final_path,
+        0o666,
     )
     logger.info(
         f"Final valid CE={v_ce:.4f}  ppl={math.exp(v_ce):.2f}  ({n_params / 1e6:.2f}M params)"

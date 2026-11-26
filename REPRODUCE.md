@@ -201,8 +201,9 @@ The trainer resumes from `<variant>_p4_state.pt` in its save directory.
 On its time limit it saves resumable state and exits unsuccessfully without
 creating a final artifact. Rerun the same command to continue.
 An external termination only preserves the last periodic checkpoint.
-The trainer writes resumable state to a temporary file in the same directory
-and replaces the previous checkpoint only after serialization succeeds.
+The trainer replaces resumable state and the final model only after the new
+file has been written successfully on the same filesystem. A failed write
+leaves the previous file in place.
 New checkpoints preserve the NumPy training and validation sample streams.
 Older checkpoints remain readable, but their sample order restarts because
 they contain no random-generator state. A warning identifies that case.
