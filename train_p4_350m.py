@@ -155,11 +155,39 @@ def main():
 
     # Resume from checkpoint if present.
     start_step = 1
+    tokens_seen = 0
     if os.path.isfile(state_path):
         state = torch.load(state_path, map_location=device)
         model.load_state_dict(state["model"])
         opt.load_state_dict(state["opt"])
         start_step = state["step"] + 1
+        saved_config = state.get("config", {})
+        tokens_seen = state.get(
+            "tokens_seen",
+            state["step"]
+            * saved_config.get("batch_size", cfg.batch_size)
+            * saved_config.get("seq_len", cfg.seq_len)
+            * saved_config.get("grad_accum", cfg.grad_accum),
+        )
+        rng_state = state.get("rng_state")
+        if rng_state is None:
+            logger.warning("Checkpoint has no random state; sample order will restart.")
+        else:
+            algorithm, keys, position, has_gauss, cached_gaussian = rng_state["numpy"]
+            np.random.set_state(
+                (
+                    algorithm,
+                    np.asarray(keys, dtype=np.uint32),
+                    position,
+                    has_gauss,
+                    cached_gaussian,
+                )
+            )
+            validation_state = rng_state["validation"]
+            if (validation_rng is None) != (validation_state is None):
+                logger.warning("Validation RNG mode differs from the checkpoint.")
+            elif validation_rng is not None:
+                validation_rng.bit_generator.state = validation_state
         logger.info(f"Resuming from step {start_step} ({state_path})")
     else:
         with open(log_path, "w") as f:
@@ -168,7 +196,34 @@ def main():
     model.train()
     t_start = time.time()
     losses_window = []
-    tokens_seen = 0
+    tokens_at_start = tokens_seen
+
+    def save_checkpoint(step):
+        algorithm, keys, position, has_gauss, cached_gaussian = np.random.get_state()
+        torch.save(
+            {
+                "model": model.state_dict(),
+                "opt": opt.state_dict(),
+                "step": step,
+                "config": asdict(cfg),
+                "tokens_seen": tokens_seen,
+                "rng_state": {
+                    "numpy": (
+                        algorithm,
+                        keys.tolist(),
+                        position,
+                        has_gauss,
+                        cached_gaussian,
+                    ),
+                    "validation": (
+                        validation_rng.bit_generator.state
+                        if validation_rng is not None
+                        else None
+                    ),
+                },
+            },
+            state_path,
+        )
 
     KILL_S = args.kill_clock_h * 3600.0
     completed_step = start_step - 1
@@ -179,15 +234,7 @@ def main():
             logger.warning(
                 f"Kill clock {args.kill_clock_h}h reached at step {step}; saving and exiting."
             )
-            torch.save(
-                {
-                    "model": model.state_dict(),
-                    "opt": opt.state_dict(),
-                    "step": completed_step,
-                    "config": asdict(cfg),
-                },
-                state_path,
-            )
+            save_checkpoint(completed_step)
             raise SystemExit(
                 "Training interrupted; resume checkpoint saved, no final artifact"
             )
@@ -214,7 +261,7 @@ def main():
         if step % cfg.log_every == 0:
             mean_loss = np.mean(losses_window[-cfg.log_every :])
             elapsed = time.time() - t_start
-            tps = tokens_seen / elapsed
+            tps = (tokens_seen - tokens_at_start) / elapsed
             vram_gb = (
                 torch.cuda.max_memory_allocated() / 1e9
                 if device.type == "cuda"
@@ -238,15 +285,7 @@ def main():
                 )
 
         if step % args.ckpt_every == 0:
-            torch.save(
-                {
-                    "model": model.state_dict(),
-                    "opt": opt.state_dict(),
-                    "step": step,
-                    "config": asdict(cfg),
-                },
-                state_path,
-            )
+            save_checkpoint(step)
             logger.info(f"  ckpt saved → {state_path}")
 
     # Final save (full eval).

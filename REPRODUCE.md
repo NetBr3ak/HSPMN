@@ -201,8 +201,14 @@ The trainer resumes from `<variant>_p4_state.pt` in its save directory.
 On its time limit it saves resumable state and exits unsuccessfully without
 creating a final artifact. Rerun the same command to continue.
 An external termination only preserves the last periodic checkpoint.
-The resume state does not preserve random-generator state, so a resumed run
-is not guaranteed to match an uninterrupted run.
+New checkpoints preserve the NumPy training and validation sample streams.
+Older checkpoints remain readable, but their sample order restarts because
+they contain no random-generator state. A warning identifies that case.
+Resuming with a different validation RNG mode also warns. The final token count
+includes earlier completed steps; older checkpoints infer those tokens from
+their saved configuration. The throughput log measures the current session.
+These states do not guarantee identical results across devices, platforms,
+library versions or nondeterministic kernels.
 
 The [larger-scale report](results/phase4_350m_analysis_2026-06-05.md#narrative-decision-pending-queue-2)
 records a Queue-2 estimate of about 30 hours. This is a historical planning
