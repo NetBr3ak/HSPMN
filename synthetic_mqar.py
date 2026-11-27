@@ -106,6 +106,9 @@ def evaluate_mqar(
         ids, labels = build_mqar_batch(
             bs, N, M, vocab=vocab, device=device, seed=42 + start
         )
+        count = (labels[:, 1:] != -100).sum().item()
+        if not count:
+            continue
         out = model(ids, labels=labels)
         logits = out["logits"]
         # Predict on positions where labels != -100. Note next-token shift:
@@ -114,12 +117,15 @@ def evaluate_mqar(
         target = labels[:, 1:]
         mask = target != -100
         correct += ((pred == target) & mask).sum().item()
-        total += mask.sum().item()
-        if "loss" in out and out["loss"] is not None:
-            losses.append(float(out["loss"].item()))
+        total += count
+        if out.get("loss") is None:
+            raise ValueError("model must return a loss for labeled examples")
+        losses.append(float(out["loss"].item()) * count)
+    if not total:
+        raise ValueError("evaluation requires at least one shifted label")
     return {
-        "accuracy": correct / max(1, total),
-        "loss": sum(losses) / max(1, len(losses)),
+        "accuracy": correct / total,
+        "loss": sum(losses) / total,
         "n_correct": correct,
         "n_total": total,
     }

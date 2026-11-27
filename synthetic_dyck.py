@@ -100,11 +100,16 @@ def evaluate_dyck2(
         ids, labels = build_dyck2_batch(
             bs, length, max_depth, device=device, seed=1000 + start
         )
+        count = (labels[:, 1:] != -100).sum().item()
+        if not count:
+            continue
         out = model(ids, labels=labels)
         loss = float(out["loss"].item())
-        losses.append(loss * bs)
-        n_tokens += bs
-    mean_loss = sum(losses) / max(1, n_tokens)
+        losses.append(loss * count)
+        n_tokens += count
+    if not n_tokens:
+        raise ValueError("evaluation requires at least one shifted label")
+    mean_loss = sum(losses) / n_tokens
     import math
 
     return {"loss": mean_loss, "ppl": math.exp(mean_loss), "n_examples": n_examples}

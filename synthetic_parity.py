@@ -69,6 +69,9 @@ def evaluate_parity(
         ids, labels = build_parity_batch(
             bs, length, p_query=p_query, device=device, seed=2000 + start
         )
+        count = (labels[:, 1:] != -100).sum().item()
+        if not count:
+            continue
         out = model(ids, labels=labels)
         logits = out["logits"]
         # Predict at the cue positions themselves (label is at that position;
@@ -81,12 +84,15 @@ def evaluate_parity(
         target = labels[:, 1:]
         mask = target != -100
         correct += ((pred == target) & mask).sum().item()
-        total += mask.sum().item()
-        if "loss" in out and out["loss"] is not None:
-            losses.append(float(out["loss"].item()))
+        total += count
+        if out.get("loss") is None:
+            raise ValueError("model must return a loss for labeled examples")
+        losses.append(float(out["loss"].item()) * count)
+    if not total:
+        raise ValueError("evaluation requires at least one shifted label")
     return {
-        "accuracy": correct / max(1, total),
-        "loss": sum(losses) / max(1, len(losses)),
+        "accuracy": correct / total,
+        "loss": sum(losses) / total,
         "n_correct": correct,
         "n_total": total,
     }
