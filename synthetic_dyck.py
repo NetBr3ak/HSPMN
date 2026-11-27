@@ -91,9 +91,10 @@ def evaluate_dyck2(
     device: str = "cuda",
     batch_size: int = 32,
 ) -> dict:
-    """Return next-token PPL on held-out Dyck-2 strings."""
+    """Return model objective loss and next-token PPL on held-out strings."""
     model.train(False)
     losses = []
+    nll = 0.0
     n_tokens = 0
     for start in range(0, n_examples, batch_size):
         bs = min(batch_size, n_examples - start)
@@ -106,13 +107,24 @@ def evaluate_dyck2(
         out = model(ids, labels=labels)
         loss = float(out["loss"].item())
         losses.append(loss * count)
+        logits = out["logits"][:, :-1, :].float()
+        nll += torch.nn.functional.cross_entropy(
+            logits.reshape(-1, logits.size(-1)),
+            labels[:, 1:].reshape(-1),
+            ignore_index=-100,
+            reduction="sum",
+        ).item()
         n_tokens += count
     if not n_tokens:
         raise ValueError("evaluation requires at least one shifted label")
     mean_loss = sum(losses) / n_tokens
     import math
 
-    return {"loss": mean_loss, "ppl": math.exp(mean_loss), "n_examples": n_examples}
+    return {
+        "loss": mean_loss,
+        "ppl": math.exp(nll / n_tokens),
+        "n_examples": n_examples,
+    }
 
 
 if __name__ == "__main__":

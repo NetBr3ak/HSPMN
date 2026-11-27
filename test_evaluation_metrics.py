@@ -68,7 +68,7 @@ def test_loss_weighted_by_shifted_labels_with_empty_middle_batch(
     )
     assert result["loss"] == pytest.approx(2.5)
     if module is synthetic_dyck:
-        assert result["ppl"] == pytest.approx(math.exp(2.5))
+        assert result["ppl"] == pytest.approx(16)
     else:
         assert result["n_total"] == 4
         assert result["accuracy"] == 1.0
@@ -105,3 +105,45 @@ def test_normal_queries_use_model_cross_entropy(evaluate, kwargs, vocab):
     result = evaluate(model, n_examples=3, batch_size=2, device="cpu", **kwargs)
     assert result["loss"] == pytest.approx(math.log(vocab))
     assert result["n_total"] > 0
+
+
+@pytest.mark.parametrize("penalty", [0.0, 2.0])
+def test_dyck_perplexity_excludes_model_penalty(penalty):
+    class Uniform(torch.nn.Module):
+        def forward(self, ids, labels=None):
+            return {
+                "logits": torch.zeros(*ids.shape, 4),
+                "loss": torch.tensor(math.log(4) + penalty),
+            }
+
+    result = synthetic_dyck.evaluate_dyck2(
+        Uniform(), length=4, n_examples=3, batch_size=2, device="cpu"
+    )
+    assert result["loss"] == pytest.approx(math.log(4) + penalty)
+    assert result["ppl"] == pytest.approx(4)
+
+
+def test_dyck_perplexity_weights_nonuniform_predictions(monkeypatch):
+    batches = iter(
+        [
+            (
+                torch.zeros((2, 4), dtype=torch.long),
+                torch.tensor([[-100, 1, 1, -100], [-100, 1, -100, -100]]),
+            ),
+            (torch.zeros((1, 2), dtype=torch.long), torch.tensor([[-100, 0]])),
+        ]
+    )
+    monkeypatch.setattr(
+        synthetic_dyck, "build_dyck2_batch", lambda *args, **kwargs: next(batches)
+    )
+
+    class Nonuniform(torch.nn.Module):
+        def forward(self, ids, labels=None):
+            logits = torch.tensor([0.0, math.log(3), 0.0, 0.0]).expand(*ids.shape, 4)
+            return {"logits": logits, "loss": torch.tensor(7.0)}
+
+    result = synthetic_dyck.evaluate_dyck2(
+        Nonuniform(), length=4, n_examples=3, batch_size=2, device="cpu"
+    )
+    assert result["loss"] == pytest.approx(7)
+    assert result["ppl"] == pytest.approx(math.exp((3 * math.log(2) + math.log(6)) / 4))
