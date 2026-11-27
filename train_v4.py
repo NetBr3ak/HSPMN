@@ -8,6 +8,7 @@ import math
 import os
 import time
 from dataclasses import asdict, dataclass
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -16,7 +17,13 @@ from torch import nn
 
 from hspmn_v3_0 import RotaryEmbedding, apply_rotary_pos_emb
 from hspmn_v4_lm import HSPMNv4LM, HSPMNv4LMConfig
-from utils_v3_0 import get_device, seed_everything, setup_env, setup_logging
+from utils_v3_0 import (
+    get_device,
+    save_atomically,
+    seed_everything,
+    setup_env,
+    setup_logging,
+)
 
 setup_env()
 logger = setup_logging(__name__)
@@ -469,10 +476,12 @@ def main():
             with open(log_path, "a") as f:
                 f.write(f"{step},,{v_ce:.4f},{cur_lr:.6f},,\n")
 
-    save_path = os.path.join(cfg.save_dir, f"{cfg.variant}_final.pt")
-    torch.save(
+    save_path = Path(cfg.save_dir) / f"{cfg.variant}_final.pt"
+    save_atomically(
         {"model": model.state_dict(), "config": asdict(cfg), "step": cfg.steps},
-        save_path,
+        save_path.resolve(),
+        0o666,
+        archive_name=save_path.name,
     )
     logger.info(f"Saved → {save_path}")
 

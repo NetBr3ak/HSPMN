@@ -12,7 +12,6 @@ Usage:
 import argparse
 import math
 import os
-import tempfile
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -21,26 +20,16 @@ import numpy as np
 import torch
 
 from train_v4 import TrainConfig, build_model, cosine_lr, get_batch, run_validation
-from utils_v3_0 import get_device, seed_everything, setup_env, setup_logging
+from utils_v3_0 import (
+    get_device,
+    save_atomically,
+    seed_everything,
+    setup_env,
+    setup_logging,
+)
 
 setup_env()
 logger = setup_logging("train_p4_350m")
-
-
-def save_atomically(payload, destination, creation_mode):
-    path = Path(destination)
-    with tempfile.TemporaryDirectory(dir=path.parent, prefix=".checkpoint-") as staging:
-        # PyTorch uses the filename as the root directory inside its ZIP archive.
-        temporary = Path(staging) / path.name
-        temporary.touch(mode=creation_mode)
-        torch.save(payload, temporary)
-        try:
-            previous_mode = path.stat().st_mode & 0o777
-        except FileNotFoundError:
-            pass
-        else:
-            temporary.chmod(previous_mode)
-        os.replace(temporary, path)
 
 
 def parse_args():

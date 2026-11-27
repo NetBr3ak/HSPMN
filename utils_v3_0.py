@@ -1,11 +1,38 @@
 import logging
+import os
 import random
+import tempfile
 import warnings
 from dataclasses import dataclass
+from pathlib import Path
 from typing import ClassVar
 
 import numpy as np
 import torch
+
+
+def save_atomically(
+    payload: object,
+    destination: str | Path,
+    creation_mode: int,
+    *,
+    archive_name: str | None = None,
+) -> None:
+    path = Path(destination)
+    with tempfile.TemporaryDirectory(dir=path.parent, prefix=".checkpoint-") as staging:
+        # PyTorch uses the filename as the root directory inside its ZIP archive.
+        temporary = Path(staging) / (
+            Path(archive_name).name if archive_name else path.name
+        )
+        temporary.touch(mode=creation_mode)
+        torch.save(payload, temporary)
+        try:
+            previous_mode = path.stat().st_mode & 0o777
+        except FileNotFoundError:
+            pass
+        else:
+            temporary.chmod(previous_mode)
+        os.replace(temporary, path)
 
 
 def setup_env():
