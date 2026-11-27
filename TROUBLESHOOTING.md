@@ -61,8 +61,8 @@ and [scale report](results/phase4_350m_analysis_2026-06-05.md).
 | A larger-scale run reads a different corpus | Pass explicit `--train_npy` and `--valid_npy`; automatic discovery prefers FineWeb files independently |
 | Out of memory at long context | Window attention and automatic selection use quadratic reference tensors |
 | Queue says DONE on a fresh checkout | Some summary artifacts are committed. DONE means an artifact exists, not that the underlying jobs ran locally |
-| Resumed run differs from uninterrupted run | Resume checkpoints do not restore random-generator state or validate every configuration field |
-| Final `tokens_seen` looks too small after resume | The larger trainer counts tokens only since the latest process start; this field is not a lifetime training-token count |
+| Resumed run differs from uninterrupted run | New P4 checkpoints restore NumPy sample streams, but do not validate every configuration field or restore PyTorch random state. Older checkpoints lack sample state; see REPRODUCE.md |
+| Final `tokens_seen` looks too small after resume | New P4 checkpoints include earlier completed steps. Older checkpoints infer their count from the saved configuration, so check that configuration |
 | A locally generated preview differs from TeX | ReportLab uses separately maintained text. The missing heatmap PNG is omitted from that preview |
 
 Older block-fusion routers also select positions using whole-sequence top-k.
