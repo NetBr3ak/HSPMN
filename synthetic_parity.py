@@ -2,10 +2,9 @@
 
 Vocabulary: {0, 1, 2}.  0 and 1 are bits.  2 is the "predict-parity-now" cue.
 
-Task: at each position labeled 2, model must predict the parity of the bits
-seen so far. Pure Transformers fail this beyond ~50 tokens (TC^0 result of
-Merrill & Sabharwal 2023). Mamba-3 / RWKV-7 (regular-language recognizers)
-should pass it indefinitely.
+At each query, the model must predict the parity of the preceding bits.
+Varying the sequence length tests whether a trained model still predicts
+parity beyond the lengths it saw during training.
 
 Format per example:
   [b_1 b_2 b_3 ... b_S]
