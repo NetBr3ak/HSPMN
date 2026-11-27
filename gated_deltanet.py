@@ -1,8 +1,7 @@
 """Gated DeltaNet (Yang/Kautz/Hatamizadeh, ICLR 2025, arXiv:2412.06464).
 
-Pure-PyTorch implementation of the chunkwise parallel form. Slower than the
-official FLA Triton kernels (`fla-org/flash-linear-attention`), but works
-without any external dependency - ships in a single file.
+The PyTorch reference updates the state one timestep at a time. On CUDA,
+the wrapper can use the optional FLA chunk kernel instead.
 
 Recurrence:
   S_t = α_t (I − β_t k_t k_t^T) S_{t-1} + β_t k_t v_t^T
@@ -14,11 +13,8 @@ rule (β: targeted update). At α=1, β=0 it's identity recurrence; at α=1,
 Gated DeltaNet.
 
 For HSPMN v4.0 it replaces ELU+1 chunked linear attention in the Reflexive
-Stream. Theoretical wins (vs ELU+1):
-- recognizes regular languages beyond TC^0 (Yang et al. §3, RWKV-7 §K);
-- no 1/Σ normalization → no instability;
-- gradient flows through the gates α and β cleanly;
-- chunkwise parallel form keeps GPU utilization.
+Stream. The forget gate scales the previous state; the write gate controls
+how much of the difference between the incoming and predicted value to store.
 
 This file ALSO ships a thin `GatedDeltaNetReflexive` wrapper that drops in
 where `LinearStateSpaceStream` lives in the v4 block - same input/output
@@ -46,12 +42,7 @@ def _chunked_gated_delta(
     beta: torch.Tensor,  # [B, S, H] - write rate, in (0, 1]
     chunk_size: int = 64,
 ) -> torch.Tensor:
-    """Chunkwise parallel Gated DeltaNet.
-
-    Inside each chunk we run the recurrence as a Python loop (cheap, chunk_size
-    is small). Across chunks we keep a running matrix state in fp32 and pass
-    it forward. This matches the FLA implementation's mathematical form.
-    """
+    """Run the recurrence sequentially, carrying the fp32 state across chunks."""
     B, S, H, D = q.shape
     state = torch.zeros(B, H, D, D, device=q.device, dtype=torch.float32)
     out = torch.empty_like(q, dtype=q.dtype)
